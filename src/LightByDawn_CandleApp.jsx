@@ -2416,46 +2416,118 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {sortedRecipes.map(r => {
-                  const canMakeInfo = whatCanIMake.find(w => w.recipe.name === r.name);
-                  return (
-                  <div key={r.id} style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                          <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '22px' }}>{r.name}</h3>
+              {/* Grid View */}
+              {recipeView === 'grid' && (
+                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+                  {sortedRecipes.map(r => {
+                    const canMakeInfo = whatCanIMake.find(w => w.recipe.name === r.name);
+                    return (
+                      <div key={r.id} style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                          <div>
+                            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', marginBottom: '4px' }}>{r.name}</h3>
+                            <p style={{ color: '#feca57', fontSize: '13px' }}>{r.vibe}</p>
+                          </div>
                           {canMakeInfo && (
                             <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, background: canMakeInfo.maxQty >= 12 ? 'rgba(85,239,196,0.2)' : canMakeInfo.maxQty > 0 ? 'rgba(254,202,87,0.2)' : 'rgba(255,107,107,0.2)', color: canMakeInfo.maxQty >= 12 ? '#55efc4' : canMakeInfo.maxQty > 0 ? '#feca57' : '#ff6b6b' }}>
-                              {canMakeInfo.maxQty > 0 ? `Can make ${canMakeInfo.maxQty}` : 'Need supplies'}
+                              {canMakeInfo.maxQty > 0 ? `${canMakeInfo.maxQty}` : '0'}
                             </span>
                           )}
                         </div>
-                        <p style={{ color: '#feca57', fontSize: '14px', marginBottom: '4px' }}>{r.vibe}</p>
-                        <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '13px', marginBottom: '8px', fontStyle: 'italic' }}>{r.style}</p>
-                        <p style={{ color: 'rgba(252,228,214,0.6)', fontSize: '14px', maxWidth: '600px' }}>{r.description}</p>
-                      </div>
-                      <div style={{ textAlign: 'right', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginLeft: '20px' }}>
-                        <div style={{ marginBottom: '8px' }}>{r.size} oz | {r.foLoad}% FO Load</div>
-                        <div style={{ marginBottom: '12px' }}>{r.container}</div>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => openEditRecipe(r)} style={btnSecondary}><Edit2 size={14} /> Edit</button>
-                          <button onClick={(e) => deleteRecipe(r.id, e)} style={{ ...btnSecondary, color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><Trash2 size={14} /> Delete</button>
+                        <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '12px', marginBottom: '12px' }}>{r.size}oz • {r.foLoad}% FO • {r.components.length} notes</p>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                          {r.components.slice(0, 3).map((c, i) => (
+                            <span key={i} style={{ padding: '4px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', fontSize: '11px' }}>{c.fragrance}</span>
+                          ))}
+                          {r.components.length > 3 && <span style={{ padding: '4px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>+{r.components.length - 3}</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => openEditRecipe(r)} style={{ ...btnSecondary, flex: 1, justifyContent: 'center', padding: '8px' }}><Edit2 size={14} /></button>
+                          <button onClick={(e) => deleteRecipe(r.id, e)} style={{ ...btnSecondary, padding: '8px', color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><Trash2 size={14} /></button>
                         </div>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {r.components.map((c, i) => (
-                        <div key={i} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>{c.fragrance}</span>
-                          <span style={{ color: c.type === 'EO' ? '#55efc4' : '#feca57', fontWeight: 600, fontSize: '11px', padding: '2px 6px', background: c.type === 'EO' ? 'rgba(85,239,196,0.2)' : 'rgba(254,202,87,0.2)', borderRadius: '4px' }}>{c.type}</span>
-                          <span style={{ color: '#ff9ff3', fontWeight: 600 }}>{c.percent}%</span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* List View */}
+              {recipeView === 'list' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {sortedRecipes.map(r => {
+                    const canMakeInfo = whatCanIMake.find(w => w.recipe.name === r.name);
+                    return (
+                      <div key={r.id} className="list-item" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="item-info" style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                            <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{r.name}</h4>
+                            <span style={{ color: '#feca57', fontSize: '12px' }}>{r.vibe}</span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{r.size}oz • {r.container} • {r.components.length} fragrance notes</div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )})}
-              </div>
+                        <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
+                          {canMakeInfo && (
+                            <div style={{ fontSize: '16px', fontWeight: 600, color: canMakeInfo.maxQty >= 12 ? '#55efc4' : canMakeInfo.maxQty > 0 ? '#feca57' : '#ff6b6b' }}>
+                              {canMakeInfo.maxQty > 0 ? `Can make ${canMakeInfo.maxQty}` : 'Need supplies'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="item-actions" style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => openEditRecipe(r)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                          <button onClick={(e) => deleteRecipe(r.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Table View */}
+              {recipeView === 'table' && (
+                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Recipe</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Size</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Container</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Notes</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Can Make</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'right', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedRecipes.map(r => {
+                        const canMakeInfo = whatCanIMake.find(w => w.recipe.name === r.name);
+                        return (
+                          <tr key={r.id} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
+                            <td style={{ padding: '14px 16px' }}>
+                              <div style={{ fontWeight: 600 }}>{r.name}</div>
+                              <div style={{ fontSize: '12px', color: '#feca57' }}>{r.vibe}</div>
+                            </td>
+                            <td style={{ padding: '14px 16px', fontSize: '14px' }}>{r.size}oz</td>
+                            <td style={{ padding: '14px 16px', fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>{r.container}</td>
+                            <td style={{ padding: '14px 16px', fontSize: '13px' }}>{r.components.length} fragrances</td>
+                            <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                              {canMakeInfo && (
+                                <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, background: canMakeInfo.maxQty >= 12 ? 'rgba(85,239,196,0.2)' : canMakeInfo.maxQty > 0 ? 'rgba(254,202,87,0.2)' : 'rgba(255,107,107,0.2)', color: canMakeInfo.maxQty >= 12 ? '#55efc4' : canMakeInfo.maxQty > 0 ? '#feca57' : '#ff6b6b' }}>
+                                  {canMakeInfo.maxQty}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => openEditRecipe(r)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                                <button onClick={(e) => deleteRecipe(r.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
