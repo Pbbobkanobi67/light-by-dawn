@@ -1,16 +1,74 @@
-# React + Vite
+# Light By Dawn - Candle Business App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive React application for managing a candle-making business, including inventory tracking, recipe management, batch building, and pricing calculations.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Dashboard** - Overview of business metrics and status
+- **Batch Builder** - Create and manage candle production batches
+- **Inventory Management** - Track materials, fragrances, and supplies
+- **Materials Tracking** - Manage wax, containers, wicks, labels, and packaging
+- **Fragrances** - Catalog of fragrance oils and essential oils with flash points and max load percentages
+- **Recipes** - Store and manage candle recipes with detailed formulations
+- **Pricing Calculator** - Calculate costs and set prices for products
+- **Shopping List** - Generate reorder lists based on inventory levels
+- **Batch History** - Track production history
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19
+- Vite 7
+- Lucide React (icons)
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Pbbobkanobi67/light-by-dawn.git
+cd light-by-dawn
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The app will be available at `http://localhost:5173` (or next available port).
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## Project Structure
+
+```
+light-by-dawn/
+├── src/
+│   ├── LightByDawn_CandleApp.jsx  # Main application component
+│   ├── main.jsx                    # Entry point
+│   └── index.css                   # Global styles
+├── index.html
+├── package.json
+├── vite.config.js
+└── FEATURE_ROADMAP.md
+```
+
+## License
+
+Private project.
