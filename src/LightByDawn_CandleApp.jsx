@@ -2999,7 +2999,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Size (oz)</label>
-                  <input type="number" value={fragranceForm.packageSize} onChange={e => setFragranceForm({ ...fragranceForm, packageSize: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                  <select value={fragranceForm.packageSize} onChange={e => setFragranceForm({ ...fragranceForm, packageSize: parseFloat(e.target.value) })} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Cost</label>
@@ -3019,11 +3019,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Qty On Hand (oz)</label>
-                  <input type="number" value={fragranceForm.qtyOnHand} onChange={e => setFragranceForm({ ...fragranceForm, qtyOnHand: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                  <input type="number" step="0.5" value={fragranceForm.qtyOnHand} onChange={e => setFragranceForm({ ...fragranceForm, qtyOnHand: parseFloat(e.target.value) || 0 })} style={inputStyle} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (oz)</label>
-                  <input type="number" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                  <input type="number" step="0.5" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
