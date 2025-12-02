@@ -1178,6 +1178,26 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           }
           .main-content { padding: 16px !important; }
           .header-batch-info { display: none !important; }
+
+          /* Page header responsive */
+          .page-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+          }
+          .page-header-controls {
+            flex-wrap: wrap !important;
+            width: 100% !important;
+          }
+          .page-header-controls select {
+            flex: 1 !important;
+            min-width: 140px !important;
+          }
+          .page-header-controls button {
+            flex: 1 !important;
+            justify-content: center !important;
+          }
+          .page-title { font-size: 24px !important; }
         }
       `}</style>
       
@@ -1738,12 +1758,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           {/* Materials */}
           {activeTab === 'materials' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Materials</h2>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Materials</h2>
                   <p style={{ color: 'rgba(252,228,214,0.6)' }}>All your raw materials with inventory tracking</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div className="page-header-controls" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {/* Category Filter */}
                   <select value={materialFilter} onChange={e => setMaterialFilter(e.target.value)} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '8px', color: '#fce4d6', fontSize: '13px' }}>
                     <option value="All">All Categories</option>
@@ -1964,12 +1984,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           {/* Fragrances */}
           {activeTab === 'fragrances' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fragrances</h2>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fragrances</h2>
                   <p style={{ color: 'rgba(252,228,214,0.6)' }}>Your fragrance oils and essential oils library</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div className="page-header-controls" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {/* Sort Dropdown */}
                   <select value={fragranceSort} onChange={e => setFragranceSort(e.target.value)} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '8px', color: '#fce4d6', fontSize: '13px' }}>
                     <option value="name">Sort: Name A-Z</option>
@@ -2212,12 +2232,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           {/* Recipes */}
           {activeTab === 'recipes' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Recipes</h2>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Recipes</h2>
                   <p style={{ color: 'rgba(252,228,214,0.6)' }}>Your signature candle blends</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div className="page-header-controls" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {/* Sort Dropdown */}
                   <select value={recipeSort} onChange={e => setRecipeSort(e.target.value)} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '8px', color: '#fce4d6', fontSize: '13px' }}>
                     <option value="name">Sort: Name A-Z</option>
