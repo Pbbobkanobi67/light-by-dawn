@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu } from 'lucide-react';
 
 // Initial data matching your Excel
 const initialMaterials = [
@@ -88,6 +88,7 @@ const categoryColors = {
 
 export default function CandleBusinessApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [materials, setMaterials] = useState(initialMaterials);
   const [fragrances, setFragrances] = useState(initialFragrances);
   const [recipes, setRecipes] = useState(initialRecipes);
@@ -1150,12 +1151,48 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
         ::-webkit-scrollbar-track { background: rgba(252,228,214,0.1); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3); border-radius: 4px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #ff9f6b !important; box-shadow: 0 0 0 3px rgba(255,159,107,0.2); }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+          .mobile-menu-btn { display: flex !important; }
+          .logo-icon { width: 40px !important; height: 40px !important; }
+          .sidebar {
+            position: fixed !important;
+            left: 0;
+            top: 0;
+            height: 100vh !important;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+          }
+          .sidebar.open { transform: translateX(0); }
+          .sidebar-overlay {
+            display: block !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+          }
+          .main-content { padding: 16px !important; }
+          .header-batch-info { display: none !important; }
+        }
       `}</style>
       
       {/* Header */}
-      <header style={{ background: 'linear-gradient(90deg, rgba(255,107,107,0.15) 0%, rgba(254,202,87,0.1) 50%, rgba(255,159,243,0.15) 100%)', borderBottom: '1px solid rgba(255,159,107,0.2)', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <header style={{ background: 'linear-gradient(90deg, rgba(255,107,107,0.15) 0%, rgba(254,202,87,0.1) 50%, rgba(255,159,243,0.15) 100%)', borderBottom: '1px solid rgba(255,159,107,0.2)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {/* Mobile menu button */}
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{ display: 'none', background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer', padding: '8px', marginRight: '4px' }}
+        >
+          <Menu size={24} />
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(255,107,107,0.3)' }}>
+          <div className="logo-icon" style={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(255,107,107,0.3)' }}>
             <Flame size={28} color="#1a0a1e" />
           </div>
           <div>
@@ -1164,7 +1201,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           </div>
         </div>
         {batchList.length > 0 && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="header-batch-info" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ background: 'rgba(255,159,107,0.2)', padding: '8px 16px', borderRadius: '20px', fontSize: '13px' }}>
               <ShoppingCart size={14} style={{ display: 'inline', marginRight: '6px' }} />
               {batchList.length} batch{batchList.length > 1 ? 'es' : ''} • {stats.pendingCandles} candles
@@ -1177,10 +1214,19 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
       </header>
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 81px)' }}>
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="sidebar-overlay"
+            onClick={() => setSidebarOpen(false)}
+            style={{ display: 'none' }}
+          />
+        )}
+
         {/* Sidebar */}
-        <nav style={{ width: '240px', background: 'rgba(0,0,0,0.2)', borderRight: '1px solid rgba(255,159,107,0.15)', padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <nav className={`sidebar ${sidebarOpen ? 'open' : ''}`} style={{ width: '240px', background: 'rgba(0,0,0,0.95)', borderRight: '1px solid rgba(255,159,107,0.15)', padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', border: 'none', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(90deg, rgba(255,107,107,0.25) 0%, rgba(254,202,87,0.15) 50%, rgba(255,159,243,0.1) 100%)' : 'transparent', color: activeTab === item.id ? '#feca57' : 'rgba(252,228,214,0.7)', cursor: 'pointer', fontSize: '14px', fontWeight: activeTab === item.id ? 600 : 400, textAlign: 'left', transition: 'all 0.2s ease', fontFamily: 'inherit' }}>
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', border: 'none', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(90deg, rgba(255,107,107,0.25) 0%, rgba(254,202,87,0.15) 50%, rgba(255,159,243,0.1) 100%)' : 'transparent', color: activeTab === item.id ? '#feca57' : 'rgba(252,228,214,0.7)', cursor: 'pointer', fontSize: '14px', fontWeight: activeTab === item.id ? 600 : 400, textAlign: 'left', transition: 'all 0.2s ease', fontFamily: 'inherit' }}>
               <item.icon size={20} />
               {item.label}
               {item.id === 'shopping' && batchList.length > 0 && (
@@ -1192,7 +1238,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
         </nav>
 
         {/* Main Content */}
-        <main style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
+        <main className="main-content" style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
           
           {/* Dashboard */}
           {activeTab === 'dashboard' && (
