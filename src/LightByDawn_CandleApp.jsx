@@ -132,7 +132,7 @@ const toCamelCase = (obj) => {
 };
 
 export default function CandleBusinessApp() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => loadFromStorage('activeTab', 'dashboard'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [materials, setMaterials] = useState(() => loadFromStorage('materials', initialMaterials));
   const [fragrances, setFragrances] = useState(() => loadFromStorage('fragrances', initialFragrances));
@@ -231,6 +231,9 @@ export default function CandleBusinessApp() {
       console.warn(`Failed to sync ${table} to Supabase:`, error);
     }
   }, []);
+
+  // Persist active tab to localStorage
+  useEffect(() => { saveToStorage('activeTab', activeTab); }, [activeTab]);
 
   // Persist data to localStorage and Supabase
   useEffect(() => {
