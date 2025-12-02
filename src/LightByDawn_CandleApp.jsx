@@ -176,6 +176,7 @@ export default function CandleBusinessApp() {
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [fragranceSort, setFragranceSort] = useState('name'); // 'name', 'type', 'vendor', 'cost', 'stock'
   const [recipeSort, setRecipeSort] = useState('name'); // 'name', 'size', 'profit', 'canMake', 'components'
+  const [recipeView, setRecipeView] = useState('grid'); // 'grid', 'list', 'table'
   const [pricingRecipe, setPricingRecipe] = useState(initialRecipes[0]?.name || ''); // Selected recipe for pricing engine
 
   // AI Profit Analysis state
@@ -2403,6 +2404,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                     <option value="components-desc">Sort: Complexity (Complex)</option>
                     <option value="vibe">Sort: Vibe/Theme</option>
                   </select>
+                  {/* View Toggle */}
+                  <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '4px' }}>
+                    {[{ id: 'grid', icon: Grid }, { id: 'list', icon: List }, { id: 'table', icon: Table }].map(v => (
+                      <button key={v.id} onClick={() => setRecipeView(v.id)} style={{ padding: '8px 12px', background: recipeView === v.id ? 'rgba(255,159,107,0.3)' : 'transparent', border: 'none', borderRadius: '6px', color: recipeView === v.id ? '#feca57' : 'rgba(252,228,214,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <v.icon size={16} />
+                      </button>
+                    ))}
+                  </div>
                   <button onClick={openNewRecipe} style={btnPrimary}><Plus size={18} /> Create Recipe</button>
                 </div>
               </div>
