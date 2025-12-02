@@ -1198,6 +1198,37 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
             justify-content: center !important;
           }
           .page-title { font-size: 24px !important; }
+
+          /* List items responsive */
+          .list-item {
+            flex-wrap: wrap !important;
+            padding: 12px !important;
+            gap: 8px !important;
+          }
+          .list-item .item-id,
+          .list-item .item-category,
+          .list-item .item-price { display: none !important; }
+          .list-item .item-info {
+            flex: 1 1 100% !important;
+            order: 1 !important;
+          }
+          .list-item .item-stock {
+            order: 2 !important;
+            margin-right: auto !important;
+          }
+          .list-item .item-actions {
+            order: 3 !important;
+          }
+          .list-item .item-checkbox { order: 0 !important; }
+          .list-item .item-alert { display: none !important; }
+
+          /* Table responsive */
+          .table-wrapper { overflow-x: auto !important; }
+
+          /* Grid cards responsive */
+          .grid-container {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
       
@@ -1819,7 +1850,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
 
               {/* Grid View */}
               {materialView === 'grid' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
                   {filteredMaterials.map(m => {
                     const isSelected = selectedMaterials.includes(m.id);
                     const isLowStock = m.qtyOnHand < m.reorderPoint;
@@ -1873,20 +1904,20 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                     const isSelected = selectedMaterials.includes(m.id);
                     const isLowStock = m.qtyOnHand < m.reorderPoint;
                     return (
-                      <div key={m.id} onClick={() => toggleMaterialSelection(m.id)} style={{ background: isSelected ? 'rgba(254,202,87,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isLowStock ? 'rgba(255,107,107,0.5)' : isSelected ? 'rgba(254,202,87,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#feca57' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#feca57' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div key={m.id} className="list-item" onClick={() => toggleMaterialSelection(m.id)} style={{ background: isSelected ? 'rgba(254,202,87,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isLowStock ? 'rgba(255,107,107,0.5)' : isSelected ? 'rgba(254,202,87,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="item-checkbox" style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#feca57' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#feca57' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {isSelected && <Check size={14} color="#1a0a1e" />}
                         </div>
-                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(252,228,214,0.5)', width: '60px' }}>{m.id}</span>
-                        <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: categoryColors[m.category]?.bg || 'rgba(255,255,255,0.1)', color: categoryColors[m.category]?.text || '#fff', width: '80px', textAlign: 'center' }}>{m.category}</span>
-                        <div style={{ flex: 1 }}>
+                        <span className="item-id" style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(252,228,214,0.5)', width: '60px' }}>{m.id}</span>
+                        <span className="item-category" style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: categoryColors[m.category]?.bg || 'rgba(255,255,255,0.1)', color: categoryColors[m.category]?.text || '#fff', width: '80px', textAlign: 'center' }}>{m.category}</span>
+                        <div className="item-info" style={{ flex: 1 }}>
                           <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '2px' }}>{m.name}</h4>
                           <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{m.vendor} • {m.packageSize} {m.unit} • {formatCurrency(m.packageCost)}</span>
                         </div>
-                        <div style={{ textAlign: 'right', marginRight: '12px' }}>
+                        <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{formatCurrency(m.packageCost / m.packageSize)}/unit</div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '120px' }} onClick={e => e.stopPropagation()}>
+                        <div className="item-stock" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '120px' }} onClick={e => e.stopPropagation()}>
                           <button onClick={() => adjustInventory(m.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: 'none', background: 'rgba(255,107,107,0.2)', color: '#ff6b6b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Minus size={12} /></button>
                           <div style={{ textAlign: 'center', minWidth: '50px' }}>
                             <div style={{ fontSize: '18px', fontWeight: 700, color: isLowStock ? '#ff6b6b' : '#55efc4' }}>{m.qtyOnHand}</div>
@@ -1894,8 +1925,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                           </div>
                           <button onClick={() => adjustInventory(m.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: 'none', background: 'rgba(85,239,196,0.2)', color: '#55efc4', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={12} /></button>
                         </div>
-                        {isLowStock && <AlertTriangle size={18} color="#ff6b6b" />}
-                        <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                        <span className="item-alert">{isLowStock && <AlertTriangle size={18} color="#ff6b6b" />}</span>
+                        <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                           <button onClick={() => openEditMaterial(m)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
                           <button onClick={(e) => deleteMaterial(m.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
                         </div>
@@ -1907,7 +1938,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
 
               {/* Table View */}
               {materialView === 'table' && (
-                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
@@ -2047,7 +2078,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                 <div style={{ flex: 1 }}>
                   {/* Grid View */}
                   {fragranceView === 'grid' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                    <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
                       {sortedFragrances.map(f => {
                         const isSelected = selectedFragrances.includes(f.id);
                         return (
@@ -2085,22 +2116,22 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                       {sortedFragrances.map(f => {
                         const isSelected = selectedFragrances.includes(f.id);
                         return (
-                          <div key={f.id} onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#a29bfe' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#a29bfe' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <div key={f.id} className="list-item" onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div className="item-checkbox" style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#a29bfe' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#a29bfe' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {isSelected && <Check size={14} color="#1a0a1e" />}
                             </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                            <div className="item-info" style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
                                 <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{f.name}</h4>
                                 <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
                               </div>
                               <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{f.vendor} • {f.packageSize}oz • {formatCurrency(f.packageCost)}</div>
                             </div>
-                            <div style={{ textAlign: 'right', marginRight: '12px' }}>
+                            <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                               <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{formatCurrency(f.packageCost / f.packageSize)}/oz</div>
                               <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Max {f.maxLoad}%</div>
                             </div>
-                            <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                            <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
                               <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
                             </div>
@@ -2112,7 +2143,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
 
                   {/* Table View */}
                   {fragranceView === 'table' && (
-                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                    <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
