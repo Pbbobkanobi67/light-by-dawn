@@ -2183,6 +2183,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                       </button>
                     ))}
                   </div>
+                  <button onClick={() => setShowArchivedFragrances(!showArchivedFragrances)} style={{ padding: '8px 16px', background: showArchivedFragrances ? 'rgba(162,155,254,0.3)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: showArchivedFragrances ? '#a29bfe' : 'rgba(252,228,214,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Archive size={16} /> {showArchivedFragrances ? 'Hide Archived' : 'Show Archived'}</button>
                   <button onClick={openAddFragrance} style={btnPrimary}><Plus size={18} /> Add Fragrance</button>
                 </div>
               </div>
