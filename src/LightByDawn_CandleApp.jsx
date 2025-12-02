@@ -48,16 +48,16 @@ const initialFragrances = [
 ];
 
 const initialRecipes = [
-  { id: 'RCP-001', name: 'Coastal Luxe', vibe: 'Tropical • Clean • Airy', style: 'Fresh, upscale beach house', description: 'A luxury coastal fragrance blending airy ocean breeze with soft tropical fruit, bright lime, and delicate jasmine.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Ocean Breeze', type: 'FO', percent: 55 }, { fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 25 }, { fragrance: 'Lime', type: 'EO', percent: 10 }, { fragrance: 'Petitgrain', type: 'EO', percent: 5 }, { fragrance: 'Jasmine', type: 'EO', percent: 5 }] },
-  { id: 'RCP-002', name: 'Sunset Colada', vibe: 'Tropical • Fruity • Smooth', style: 'Vacation sunset cocktail', description: 'Bright and sunny tropical fruit softened with creamy vanilla and citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 60 }, { fragrance: 'Vanilla', type: 'EO', percent: 15 }, { fragrance: 'Lime', type: 'EO', percent: 15 }, { fragrance: 'Orange', type: 'EO', percent: 10 }] },
-  { id: 'RCP-003', name: 'Harvest Cabin', vibe: 'Warm • Spiced • Comforting', style: 'Cozy fall evening', description: 'A welcoming fall scent with warm apple cinnamon, smooth vanilla, gentle orange, and a cedarwood base.', container: '6oz Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 6, foLoad: 10, components: [{ fragrance: 'Apple Cinnamon', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Frankincense', type: 'EO', percent: 5 }] },
-  { id: 'RCP-004', name: 'Toes In The Sand', vibe: 'Fresh • Uplifting • Coastal', style: 'Tropical fruit meets coastal breeze', description: 'Tropical fruit meets a refreshing ocean breeze with hints of lime and gentle mint. Clean, bright, and beachy.', container: '4oz Small Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 4, foLoad: 10, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 55 }, { fragrance: 'Coconut Lime', type: 'FO', percent: 20 }, { fragrance: 'Eucalyptus Spearmint', type: 'EO', percent: 20 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 5 }] },
-  { id: 'RCP-005', name: 'Alpine Holiday', vibe: 'Fresh • Festive • Cozy', style: 'Christmas tree + winter citrus', description: 'A refined Christmas scent combining fresh balsam pine with creamy vanilla and bright winter citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Pine', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Bergamot', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Cedar', type: 'EO', percent: 5 }] },
-  { id: 'RCP-006', name: 'Fireside Spice Latte', vibe: 'Cozy • Spiced • Sweet', style: 'Warm holiday café', description: 'Creamy pumpkin spice latte layered with caramel, vanilla, cedarwood, and a subtle hint of black pepper.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Pumpkin Spice Latte', type: 'FO', percent: 50 }, { fragrance: 'Caramel', type: 'FO', percent: 20 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 5 }, { fragrance: 'Black Pepper', type: 'FO', percent: 5 }] },
-  { id: 'RCP-007', name: 'Forbidden Vanilla Kiss', vibe: 'Romantic • Seductive • Luxury', style: 'Signature sweet-floral gourmand', description: 'A sensual, sweet-floral indulgence where creamy vanilla swirls with lush blooms and soft citrus sparkle.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Sweet Taboo', type: 'FO', percent: 48 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 35 }, { fragrance: 'Jasmine', type: 'EO', percent: 10 }, { fragrance: 'Bergamot', type: 'EO', percent: 5 }, { fragrance: 'Rose', type: 'EO', percent: 2 }] },
-  { id: 'RCP-008', name: 'Alpine Spa', vibe: 'Clean • Fresh • Cozy', style: 'Perfect winter spa scent', description: 'A clean, uplifting alpine blend that combines crisp evergreens with ocean freshness and soothing spa botanicals.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Mountain Meets Ocean', type: 'FO', percent: 40 }, { fragrance: 'Balsam Pine', type: 'EO', percent: 30 }, { fragrance: 'Eucalyptus', type: 'EO', percent: 10 }, { fragrance: 'Rosemary', type: 'EO', percent: 10 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 10 }] },
-  { id: 'RCP-009', name: 'Island Bliss', vibe: 'Tropical • Smooth • Playful', style: 'Flirty tropical fruit', description: 'A bright blend of tropical fruit, creamy island sweetness, and soft warm notes that drift across sunlit shores.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 50 }, { fragrance: 'Butt Naked', type: 'FO', percent: 30 }, { fragrance: 'Sweetest Taboo', type: 'FO', percent: 20 }] },
-  { id: 'RCP-010', name: 'Eucalyptus Spa', vibe: 'Clean • Cooling • Refreshing', style: 'Herbal aromatherapy', description: 'A refreshing blend of cool eucalyptus and crisp spearmint that opens the senses and calms the mind.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: 'Eucalyptus Spearmint', type: 'FO', percent: 100 }] },
+  { id: 'RCP-001', name: 'Coastal Luxe', vibe: 'Tropical • Clean • Airy', style: 'Fresh, upscale beach house', description: 'A luxury coastal fragrance blending airy ocean breeze with soft tropical fruit, bright lime, and delicate jasmine.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Ocean Breeze', type: 'FO', percent: 55 }, { fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 25 }, { fragrance: 'Lime', type: 'EO', percent: 10 }, { fragrance: 'Petitgrain', type: 'EO', percent: 5 }, { fragrance: 'Jasmine', type: 'EO', percent: 5 }] },
+  { id: 'RCP-002', name: 'Sunset Colada', vibe: 'Tropical • Fruity • Smooth', style: 'Vacation sunset cocktail', description: 'Bright and sunny tropical fruit softened with creamy vanilla and citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 60 }, { fragrance: 'Vanilla', type: 'EO', percent: 15 }, { fragrance: 'Lime', type: 'EO', percent: 15 }, { fragrance: 'Orange', type: 'EO', percent: 10 }] },
+  { id: 'RCP-003', name: 'Harvest Cabin', vibe: 'Warm • Spiced • Comforting', style: 'Cozy fall evening', description: 'A welcoming fall scent with warm apple cinnamon, smooth vanilla, gentle orange, and a cedarwood base.', container: '6oz Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 6, foLoad: 10, archived: false, components: [{ fragrance: 'Apple Cinnamon', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Frankincense', type: 'EO', percent: 5 }] },
+  { id: 'RCP-004', name: 'Toes In The Sand', vibe: 'Fresh • Uplifting • Coastal', style: 'Tropical fruit meets coastal breeze', description: 'Tropical fruit meets a refreshing ocean breeze with hints of lime and gentle mint. Clean, bright, and beachy.', container: '4oz Small Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 4, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 55 }, { fragrance: 'Coconut Lime', type: 'FO', percent: 20 }, { fragrance: 'Eucalyptus Spearmint', type: 'EO', percent: 20 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 5 }] },
+  { id: 'RCP-005', name: 'Alpine Holiday', vibe: 'Fresh • Festive • Cozy', style: 'Christmas tree + winter citrus', description: 'A refined Christmas scent combining fresh balsam pine with creamy vanilla and bright winter citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Pine', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Bergamot', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Cedar', type: 'EO', percent: 5 }] },
+  { id: 'RCP-006', name: 'Fireside Spice Latte', vibe: 'Cozy • Spiced • Sweet', style: 'Warm holiday café', description: 'Creamy pumpkin spice latte layered with caramel, vanilla, cedarwood, and a subtle hint of black pepper.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Pumpkin Spice Latte', type: 'FO', percent: 50 }, { fragrance: 'Caramel', type: 'FO', percent: 20 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 5 }, { fragrance: 'Black Pepper', type: 'FO', percent: 5 }] },
+  { id: 'RCP-007', name: 'Forbidden Vanilla Kiss', vibe: 'Romantic • Seductive • Luxury', style: 'Signature sweet-floral gourmand', description: 'A sensual, sweet-floral indulgence where creamy vanilla swirls with lush blooms and soft citrus sparkle.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Sweet Taboo', type: 'FO', percent: 48 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 35 }, { fragrance: 'Jasmine', type: 'EO', percent: 10 }, { fragrance: 'Bergamot', type: 'EO', percent: 5 }, { fragrance: 'Rose', type: 'EO', percent: 2 }] },
+  { id: 'RCP-008', name: 'Alpine Spa', vibe: 'Clean • Fresh • Cozy', style: 'Perfect winter spa scent', description: 'A clean, uplifting alpine blend that combines crisp evergreens with ocean freshness and soothing spa botanicals.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Mountain Meets Ocean', type: 'FO', percent: 40 }, { fragrance: 'Balsam Pine', type: 'EO', percent: 30 }, { fragrance: 'Eucalyptus', type: 'EO', percent: 10 }, { fragrance: 'Rosemary', type: 'EO', percent: 10 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 10 }] },
+  { id: 'RCP-009', name: 'Island Bliss', vibe: 'Tropical • Smooth • Playful', style: 'Flirty tropical fruit', description: 'A bright blend of tropical fruit, creamy island sweetness, and soft warm notes that drift across sunlit shores.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 50 }, { fragrance: 'Butt Naked', type: 'FO', percent: 30 }, { fragrance: 'Sweetest Taboo', type: 'FO', percent: 20 }] },
+  { id: 'RCP-010', name: 'Eucalyptus Spa', vibe: 'Clean • Cooling • Refreshing', style: 'Herbal aromatherapy', description: 'A refreshing blend of cool eucalyptus and crisp spearmint that opens the senses and calms the mind.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Eucalyptus Spearmint', type: 'FO', percent: 100 }] },
 ];
 
 const initialBatchHistory = [];
@@ -164,7 +164,7 @@ export default function CandleBusinessApp() {
   const [editingFragrance, setEditingFragrance] = useState(null);
 
   // Form states
-  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
@@ -178,6 +178,7 @@ export default function CandleBusinessApp() {
   const [fragranceSort, setFragranceSort] = useState('name'); // 'name', 'type', 'vendor', 'cost', 'stock'
   const [recipeSort, setRecipeSort] = useState('name'); // 'name', 'size', 'profit', 'canMake', 'components'
   const [recipeView, setRecipeView] = useState('grid'); // 'grid', 'list', 'table'
+  const [showArchivedRecipes, setShowArchivedRecipes] = useState(false);
   const [pricingRecipe, setPricingRecipe] = useState(initialRecipes[0]?.name || ''); // Selected recipe for pricing engine
 
   // AI Profit Analysis state
@@ -575,7 +576,8 @@ export default function CandleBusinessApp() {
 
   // Sorted recipes
   const sortedRecipes = useMemo(() => {
-    const sorted = [...recipes];
+    const filtered = recipes.filter(r => showArchivedRecipes || !r.archived);
+    const sorted = [...filtered];
     switch (recipeSort) {
       case 'name':
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -606,7 +608,7 @@ export default function CandleBusinessApp() {
       default:
         return sorted;
     }
-  }, [recipes, recipeSort, whatCanIMake]);
+  }, [recipes, recipeSort, whatCanIMake, showArchivedRecipes]);
 
   // Auto-deduct materials when logging a batch
   const deductBatchMaterials = (batch) => {
@@ -967,7 +969,7 @@ export default function CandleBusinessApp() {
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
-    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
     setShowRecipeModal(true);
   };
 
@@ -994,6 +996,18 @@ export default function CandleBusinessApp() {
   const deleteRecipe = (id, e) => {
     if (e) e.stopPropagation();
     setRecipes(recipes.filter(r => r.id !== id));
+  };
+
+  const archiveRecipe = (id, e) => {
+    if (e) e.stopPropagation();
+    setRecipes(recipes.map(r => r.id === id ? { ...r, archived: !r.archived } : r));
+  };
+
+  const copyRecipe = (recipe, e) => {
+    if (e) e.stopPropagation();
+    setEditingRecipe(null);
+    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components] });
+    setShowRecipeModal(true);
   };
 
   const addComponent = () => setRecipeForm({ ...recipeForm, components: [...recipeForm.components, { fragrance: '', type: 'FO', percent: 0 }] });
@@ -2422,6 +2436,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                       </button>
                     ))}
                   </div>
+                  <button onClick={() => setShowArchivedRecipes(!showArchivedRecipes)} style={{ padding: '8px 16px', background: showArchivedRecipes ? 'rgba(162,155,254,0.3)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: showArchivedRecipes ? '#a29bfe' : 'rgba(252,228,214,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Archive size={16} /> {showArchivedRecipes ? 'Hide Archived' : 'Show Archived'}</button>
                   <button onClick={openNewRecipe} style={btnPrimary}><Plus size={18} /> Create Recipe</button>
                 </div>
               </div>
@@ -2453,6 +2468,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button onClick={() => openEditRecipe(r)} style={{ ...btnSecondary, flex: 1, justifyContent: 'center', padding: '8px' }}><Edit2 size={14} /></button>
+                          <button onClick={(e) => copyRecipe(r, e)} style={{ ...btnSecondary, padding: '8px', color: '#74b9ff', borderColor: 'rgba(116,185,255,0.3)' }} title="Copy Recipe"><Copy size={14} /></button>
+                          <button onClick={(e) => archiveRecipe(r.id, e)} style={{ ...btnSecondary, padding: '8px', color: r.archived ? '#55efc4' : '#a29bfe', borderColor: r.archived ? 'rgba(85,239,196,0.3)' : 'rgba(162,155,254,0.3)' }} title={r.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
                           <button onClick={(e) => deleteRecipe(r.id, e)} style={{ ...btnSecondary, padding: '8px', color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><Trash2 size={14} /></button>
                         </div>
                       </div>
@@ -2484,6 +2501,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                         </div>
                         <div className="item-actions" style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => openEditRecipe(r)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                          <button onClick={(e) => copyRecipe(r, e)} style={{ background: 'rgba(116,185,255,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#74b9ff', cursor: 'pointer' }} title="Copy Recipe"><Copy size={14} /></button>
+                          <button onClick={(e) => archiveRecipe(r.id, e)} style={{ background: r.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: r.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={r.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
                           <button onClick={(e) => deleteRecipe(r.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
                         </div>
                       </div>
@@ -2529,6 +2548,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                               <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                                 <button onClick={() => openEditRecipe(r)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
                                 <button onClick={(e) => deleteRecipe(r.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                <button onClick={(e) => copyRecipe(r, e)} style={{ background: 'rgba(116,185,255,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#74b9ff', cursor: 'pointer' }} title="Copy Recipe"><Copy size={14} /></button>
+                                <button onClick={(e) => archiveRecipe(r.id, e)} style={{ background: r.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: r.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={r.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
                               </div>
                             </td>
                           </tr>
