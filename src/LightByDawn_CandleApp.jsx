@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu } from 'lucide-react';
 
 // Initial data matching your Excel
@@ -86,16 +86,37 @@ const categoryColors = {
   Fragrance: { bg: 'rgba(253,203,110,0.2)', text: '#fdcb6e' },
 };
 
+// localStorage helpers
+const STORAGE_KEY = 'lightByDawn_data';
+
+const loadFromStorage = (key, defaultValue) => {
+  try {
+    const stored = localStorage.getItem(`${STORAGE_KEY}_${key}`);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (e) {
+    console.warn(`Failed to load ${key} from localStorage:`, e);
+    return defaultValue;
+  }
+};
+
+const saveToStorage = (key, value) => {
+  try {
+    localStorage.setItem(`${STORAGE_KEY}_${key}`, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`Failed to save ${key} to localStorage:`, e);
+  }
+};
+
 export default function CandleBusinessApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [materials, setMaterials] = useState(initialMaterials);
-  const [fragrances, setFragrances] = useState(initialFragrances);
-  const [recipes, setRecipes] = useState(initialRecipes);
-  const [batchHistory, setBatchHistory] = useState(initialBatchHistory);
+  const [materials, setMaterials] = useState(() => loadFromStorage('materials', initialMaterials));
+  const [fragrances, setFragrances] = useState(() => loadFromStorage('fragrances', initialFragrances));
+  const [recipes, setRecipes] = useState(() => loadFromStorage('recipes', initialRecipes));
+  const [batchHistory, setBatchHistory] = useState(() => loadFromStorage('batchHistory', initialBatchHistory));
   
   // Multi-batch builder state
-  const [batchList, setBatchList] = useState([]);
+  const [batchList, setBatchList] = useState(() => loadFromStorage('batchList', []));
   const [currentBatch, setCurrentBatch] = useState({
     recipe: 'Toes In The Sand',
     quantity: 12,
@@ -137,6 +158,13 @@ export default function CandleBusinessApp() {
   const [profitAnalysisLoading, setProfitAnalysisLoading] = useState(false);
   const [profitAnalysis, setProfitAnalysis] = useState(null);
   const [profitAnalysisTime, setProfitAnalysisTime] = useState(0);
+
+  // Persist data to localStorage
+  useEffect(() => { saveToStorage('materials', materials); }, [materials]);
+  useEffect(() => { saveToStorage('fragrances', fragrances); }, [fragrances]);
+  useEffect(() => { saveToStorage('recipes', recipes); }, [recipes]);
+  useEffect(() => { saveToStorage('batchHistory', batchHistory); }, [batchHistory]);
+  useEffect(() => { saveToStorage('batchList', batchList); }, [batchList]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
