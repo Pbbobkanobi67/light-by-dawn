@@ -166,7 +166,7 @@ export default function CandleBusinessApp() {
   // Form states
   const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
-  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
+  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
   // Fragrance page state
   const [fragranceView, setFragranceView] = useState('grid'); // 'grid', 'list', 'table'
@@ -934,13 +934,13 @@ export default function CandleBusinessApp() {
   // Fragrance functions
   const openAddFragrance = () => {
     setEditingFragrance(null);
-    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
+    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
     setShowFragranceModal(true);
   };
 
   const openEditFragrance = (frag) => {
     setEditingFragrance(frag.id);
-    setFragranceForm({ ...frag });
+    const defaultPrices = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }; const prices = frag.prices || { ...defaultPrices, [frag.packageSize]: frag.packageCost }; setFragranceForm({ ...frag, prices, packageCost: prices[frag.packageSize] || frag.packageCost });
     setShowFragranceModal(true);
   };
 
@@ -3021,11 +3021,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Size (oz)</label>
-                  <select value={fragranceForm.packageSize} onChange={e => setFragranceForm({ ...fragranceForm, packageSize: parseFloat(e.target.value) })} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
+                  <select value={fragranceForm.packageSize} onChange={e => { const size = parseFloat(e.target.value); setFragranceForm({ ...fragranceForm, packageSize: size, packageCost: fragranceForm.prices?.[size] || 0 }); }} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Cost</label>
-                  <input type="number" step="0.01" value={fragranceForm.packageCost} onChange={e => setFragranceForm({ ...fragranceForm, packageCost: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                  <input type="number" step="0.01" value={fragranceForm.packageCost} onChange={e => { const cost = parseFloat(e.target.value) || 0; setFragranceForm({ ...fragranceForm, packageCost: cost, prices: { ...fragranceForm.prices, [fragranceForm.packageSize]: cost } }); }} style={inputStyle} />
                   {fragranceForm.packageSize > 0 && fragranceForm.packageCost > 0 && <div style={{ fontSize: "11px", color: "rgba(252,228,214,0.5)", marginTop: "4px" }}>${(fragranceForm.packageCost / fragranceForm.packageSize).toFixed(2)}/oz</div>}
                 </div>
               </div>
