@@ -166,7 +166,7 @@ export default function CandleBusinessApp() {
   // Form states
   const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
-  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
+  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
   // Fragrance page state
   const [fragranceView, setFragranceView] = useState('grid'); // 'grid', 'list', 'table'
@@ -934,13 +934,13 @@ export default function CandleBusinessApp() {
   // Fragrance functions
   const openAddFragrance = () => {
     setEditingFragrance(null);
-    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
+    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
     setShowFragranceModal(true);
   };
 
   const openEditFragrance = (frag) => {
     setEditingFragrance(frag.id);
-    const defaultPrices = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }; const prices = frag.prices || { ...defaultPrices, [frag.packageSize]: frag.packageCost }; setFragranceForm({ ...frag, prices, packageCost: prices[frag.packageSize] || frag.packageCost });
+    const defaultPrices = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }; const defaultQtys = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }; const prices = frag.prices || { ...defaultPrices, [frag.packageSize]: frag.packageCost }; const quantities = frag.quantities || { ...defaultQtys, [frag.packageSize]: frag.qtyOnHand || 0 }; setFragranceForm({ ...frag, prices, quantities });
     setShowFragranceModal(true);
   };
 
@@ -3020,17 +3020,6 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Size (oz)</label>
-                  <select value={fragranceForm.packageSize} onChange={e => { const size = parseFloat(e.target.value); setFragranceForm({ ...fragranceForm, packageSize: size, packageCost: fragranceForm.prices?.[size] || 0 }); }} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Cost</label>
-                  <input type="number" step="0.01" value={fragranceForm.packageCost} onChange={e => { const cost = parseFloat(e.target.value) || 0; setFragranceForm({ ...fragranceForm, packageCost: cost, prices: { ...fragranceForm.prices, [fragranceForm.packageSize]: cost } }); }} style={inputStyle} />
-                  {fragranceForm.packageSize > 0 && fragranceForm.packageCost > 0 && <div style={{ fontSize: "11px", color: "rgba(252,228,214,0.5)", marginTop: "4px" }}>${(fragranceForm.packageCost / fragranceForm.packageSize).toFixed(2)}/oz</div>}
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Flash Point (°F)</label>
                   <input type="number" value={fragranceForm.flashPoint} onChange={e => setFragranceForm({ ...fragranceForm, flashPoint: parseInt(e.target.value) || 0 })} style={inputStyle} />
                 </div>
@@ -3039,15 +3028,30 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                   <input type="number" value={fragranceForm.maxLoad} onChange={e => setFragranceForm({ ...fragranceForm, maxLoad: parseInt(e.target.value) || 0 })} style={inputStyle} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Qty On Hand (oz)</label>
-                  <input type="number" step="0.5" value={fragranceForm.qtyOnHand} onChange={e => setFragranceForm({ ...fragranceForm, qtyOnHand: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Inventory by Size</label>
+                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>
+                    <span>Size</span><span>Qty</span><span>Cost</span><span>$/oz</span>
+                  </div>
+                  {[0.5, 1, 4, 8, 16].map(size => (
+                    <div key={size} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: '#fce4d6' }}>{size} oz</span>
+                      <input type="number" min="0" value={fragranceForm.quantities?.[size] || 0} onChange={e => setFragranceForm({ ...fragranceForm, quantities: { ...fragranceForm.quantities, [size]: parseInt(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px' }} placeholder="0" />
+                      <input type="number" step="0.01" min="0" value={fragranceForm.prices?.[size] || ''} onChange={e => setFragranceForm({ ...fragranceForm, prices: { ...fragranceForm.prices, [size]: parseFloat(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px' }} placeholder="$0.00" />
+                      <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>{fragranceForm.prices?.[size] > 0 ? `$${(fragranceForm.prices[size] / size).toFixed(2)}` : '-'}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '8px 12px', borderTop: '1px solid rgba(255,159,107,0.3)', background: 'rgba(255,159,107,0.1)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#feca57' }}>Total</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#55efc4' }}>{Object.entries(fragranceForm.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span>
+                    <span></span><span></span>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (oz)</label>
-                  <input type="number" step="0.5" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
-                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (total oz)</label>
+                <input type="number" step="0.5" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                 <button onClick={() => setShowFragranceModal(false)} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
