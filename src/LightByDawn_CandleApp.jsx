@@ -3020,7 +3020,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Size (oz)</label>
-                  <select value={fragranceForm.packageSize} onChange={e => setFragranceForm({ ...fragranceForm, packageSize: parseFloat(e.target.value) })} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
+                  <select value={fragranceForm.packageSize} onChange={e => { const newSize = parseFloat(e.target.value); const costPerOz = fragranceForm.packageCost / fragranceForm.packageSize; setFragranceForm({ ...fragranceForm, packageSize: newSize, packageCost: Math.round(costPerOz * newSize * 100) / 100 }); }} style={inputStyle}><option value="0.5">0.5 oz (Sample)</option><option value="1">1 oz</option><option value="4">4 oz</option><option value="8">8 oz</option><option value="16">16 oz</option></select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Package Cost</label>
