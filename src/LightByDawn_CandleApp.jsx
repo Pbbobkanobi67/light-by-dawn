@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
 const initialMaterials = [
@@ -86,7 +87,7 @@ const categoryColors = {
   Fragrance: { bg: 'rgba(253,203,110,0.2)', text: '#fdcb6e' },
 };
 
-// localStorage helpers
+// localStorage helpers (fallback for offline)
 const STORAGE_KEY = 'lightByDawn_data';
 
 const loadFromStorage = (key, defaultValue) => {
@@ -105,6 +106,29 @@ const saveToStorage = (key, value) => {
   } catch (e) {
     console.warn(`Failed to save ${key} to localStorage:`, e);
   }
+};
+
+// Supabase helpers - convert between camelCase (app) and snake_case (db)
+const toSnakeCase = (obj) => {
+  if (Array.isArray(obj)) return obj.map(toSnakeCase);
+  if (obj === null || typeof obj !== 'object') return obj;
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [
+      k.replace(/([A-Z])/g, '_$1').toLowerCase(),
+      toSnakeCase(v)
+    ])
+  );
+};
+
+const toCamelCase = (obj) => {
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+  if (obj === null || typeof obj !== 'object') return obj;
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [
+      k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()),
+      toCamelCase(v)
+    ])
+  );
 };
 
 export default function CandleBusinessApp() {
@@ -159,12 +183,80 @@ export default function CandleBusinessApp() {
   const [profitAnalysis, setProfitAnalysis] = useState(null);
   const [profitAnalysisTime, setProfitAnalysisTime] = useState(0);
 
-  // Persist data to localStorage
-  useEffect(() => { saveToStorage('materials', materials); }, [materials]);
-  useEffect(() => { saveToStorage('fragrances', fragrances); }, [fragrances]);
-  useEffect(() => { saveToStorage('recipes', recipes); }, [recipes]);
-  useEffect(() => { saveToStorage('batchHistory', batchHistory); }, [batchHistory]);
-  useEffect(() => { saveToStorage('batchList', batchList); }, [batchList]);
+  // Supabase sync state
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'error'
+
+  // Load data from Supabase on mount
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        setSyncStatus('syncing');
+
+        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes] = await Promise.all([
+          supabase.from('materials').select('*'),
+          supabase.from('fragrances').select('*'),
+          supabase.from('recipes').select('*'),
+          supabase.from('batch_history').select('*'),
+          supabase.from('batch_list').select('*'),
+        ]);
+
+        // If we have data in Supabase, use it; otherwise keep localStorage/defaults
+        if (materialsRes.data?.length > 0) setMaterials(toCamelCase(materialsRes.data));
+        if (fragrancesRes.data?.length > 0) setFragrances(toCamelCase(fragrancesRes.data));
+        if (recipesRes.data?.length > 0) setRecipes(toCamelCase(recipesRes.data));
+        if (batchHistoryRes.data?.length > 0) setBatchHistory(toCamelCase(batchHistoryRes.data));
+        if (batchListRes.data?.length > 0) setBatchList(toCamelCase(batchListRes.data));
+
+        setSyncStatus('idle');
+      } catch (error) {
+        console.warn('Failed to load from Supabase, using localStorage:', error);
+        setSyncStatus('error');
+      }
+      setDataLoaded(true);
+    };
+
+    loadFromSupabase();
+  }, []);
+
+  // Save to Supabase helper
+  const syncToSupabase = useCallback(async (table, data) => {
+    try {
+      // Delete all existing rows and insert new ones (simple sync strategy)
+      await supabase.from(table).delete().neq('id', '');
+      if (data.length > 0) {
+        await supabase.from(table).insert(toSnakeCase(data));
+      }
+    } catch (error) {
+      console.warn(`Failed to sync ${table} to Supabase:`, error);
+    }
+  }, []);
+
+  // Persist data to localStorage and Supabase
+  useEffect(() => {
+    saveToStorage('materials', materials);
+    if (dataLoaded) syncToSupabase('materials', materials);
+  }, [materials, dataLoaded, syncToSupabase]);
+
+  useEffect(() => {
+    saveToStorage('fragrances', fragrances);
+    if (dataLoaded) syncToSupabase('fragrances', fragrances);
+  }, [fragrances, dataLoaded, syncToSupabase]);
+
+  useEffect(() => {
+    saveToStorage('recipes', recipes);
+    if (dataLoaded) syncToSupabase('recipes', recipes);
+  }, [recipes, dataLoaded, syncToSupabase]);
+
+  useEffect(() => {
+    saveToStorage('batchHistory', batchHistory);
+    if (dataLoaded) syncToSupabase('batch_history', batchHistory);
+  }, [batchHistory, dataLoaded, syncToSupabase]);
+
+  useEffect(() => {
+    saveToStorage('batchList', batchList);
+    if (dataLoaded) syncToSupabase('batch_list', batchList);
+  }, [batchList, dataLoaded, syncToSupabase]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'

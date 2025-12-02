@@ -1,0 +1,119 @@
+-- Light By Dawn Database Schema
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/xxtoscqihhiiqwjooaxj/sql
+
+-- Materials table
+CREATE TABLE IF NOT EXISTS materials (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  vendor TEXT,
+  unit TEXT,
+  package_size NUMERIC,
+  package_cost NUMERIC,
+  qty_on_hand NUMERIC DEFAULT 0,
+  reorder_point NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Fragrances table
+CREATE TABLE IF NOT EXISTS fragrances (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT, -- 'FO' or 'EO'
+  vendor TEXT,
+  package_size NUMERIC,
+  package_cost NUMERIC,
+  flash_point NUMERIC,
+  max_load NUMERIC,
+  qty_on_hand NUMERIC DEFAULT 0,
+  reorder_point NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Recipes table (components stored as JSONB for simplicity)
+CREATE TABLE IF NOT EXISTS recipes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  vibe TEXT,
+  style TEXT,
+  description TEXT,
+  container TEXT,
+  wax TEXT,
+  wick TEXT,
+  size NUMERIC,
+  fo_load NUMERIC,
+  components JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Batch history table
+CREATE TABLE IF NOT EXISTS batch_history (
+  id TEXT PRIMARY KEY,
+  recipe TEXT NOT NULL,
+  quantity NUMERIC,
+  size NUMERIC,
+  date TIMESTAMPTZ,
+  notes TEXT,
+  pour_temp NUMERIC,
+  cure_date TIMESTAMPTZ,
+  cold_throw NUMERIC,
+  hot_throw NUMERIC,
+  burn_time NUMERIC,
+  total_cost NUMERIC,
+  cost_per_candle NUMERIC,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Batch list (pending batches)
+CREATE TABLE IF NOT EXISTS batch_list (
+  id TEXT PRIMARY KEY,
+  recipe TEXT NOT NULL,
+  quantity NUMERIC,
+  size NUMERIC,
+  fo_load NUMERIC,
+  wax_cost_per_oz NUMERIC,
+  fragrance_cost_per_oz NUMERIC,
+  container_cost NUMERIC,
+  wick_cost NUMERIC,
+  label_cost NUMERIC,
+  box_cost NUMERIC,
+  overhead_per_candle NUMERIC,
+  labor_cost NUMERIC,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security (allows public read/write for now)
+ALTER TABLE materials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fragrances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE batch_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE batch_list ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for public access (no auth required)
+CREATE POLICY "Allow public read" ON materials FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON materials FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON materials FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON materials FOR DELETE USING (true);
+
+CREATE POLICY "Allow public read" ON fragrances FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON fragrances FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON fragrances FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON fragrances FOR DELETE USING (true);
+
+CREATE POLICY "Allow public read" ON recipes FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON recipes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON recipes FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON recipes FOR DELETE USING (true);
+
+CREATE POLICY "Allow public read" ON batch_history FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON batch_history FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON batch_history FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON batch_history FOR DELETE USING (true);
+
+CREATE POLICY "Allow public read" ON batch_list FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON batch_list FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON batch_list FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON batch_list FOR DELETE USING (true);
