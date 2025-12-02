@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -166,10 +166,11 @@ export default function CandleBusinessApp() {
   // Form states
   const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
-  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10 });
+  const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
   // Fragrance page state
   const [fragranceView, setFragranceView] = useState('grid'); // 'grid', 'list', 'table'
+  const [showArchivedFragrances, setShowArchivedFragrances] = useState(false);
   const [selectedFragrances, setSelectedFragrances] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
@@ -552,7 +553,8 @@ export default function CandleBusinessApp() {
 
   // Sorted fragrances
   const sortedFragrances = useMemo(() => {
-    const sorted = [...fragrances];
+    const filtered = fragrances.filter(f => showArchivedFragrances || !f.archived);
+    const sorted = [...filtered];
     switch (fragranceSort) {
       case 'name':
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -569,7 +571,7 @@ export default function CandleBusinessApp() {
       default:
         return sorted;
     }
-  }, [fragrances, fragranceSort]);
+  }, [fragrances, fragranceSort, showArchivedFragrances]);
 
   // Sorted recipes
   const sortedRecipes = useMemo(() => {
@@ -930,7 +932,7 @@ export default function CandleBusinessApp() {
   // Fragrance functions
   const openAddFragrance = () => {
     setEditingFragrance(null);
-    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10 });
+    setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
     setShowFragranceModal(true);
   };
 
@@ -955,6 +957,11 @@ export default function CandleBusinessApp() {
     if (e) e.stopPropagation();
     setFragrances(fragrances.filter(f => f.id !== id));
     setSelectedFragrances(selectedFragrances.filter(sid => sid !== id));
+  };
+
+  const archiveFragrance = (id, e) => {
+    if (e) e.stopPropagation();
+    setFragrances(fragrances.map(f => f.id === id ? { ...f, archived: !f.archived } : f));
   };
 
   // Recipe functions
@@ -2219,6 +2226,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                               </div>
                               <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                                 <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={12} /></button>
                                 <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
                               </div>
                             </div>
@@ -2257,6 +2265,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                             </div>
                             <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                              <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
                               <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
                             </div>
                           </div>
@@ -2299,7 +2308,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                                 <td style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
                                   <div style={{ display: 'flex', gap: '6px' }}>
                                     <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
-                                    <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                                    <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={12} /></button>
+                                <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
                                   </div>
                                 </td>
                               </tr>
@@ -3004,6 +3014,16 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Max Load %</label>
                   <input type="number" value={fragranceForm.maxLoad} onChange={e => setFragranceForm({ ...fragranceForm, maxLoad: parseInt(e.target.value) || 0 })} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Qty On Hand (oz)</label>
+                  <input type="number" value={fragranceForm.qtyOnHand} onChange={e => setFragranceForm({ ...fragranceForm, qtyOnHand: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (oz)</label>
+                  <input type="number" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
