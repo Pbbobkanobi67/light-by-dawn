@@ -2011,7 +2011,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button onClick={resetCurrentBatch} style={btnSecondary}><RotateCcw size={16} /> Reset</button>
                   <button onClick={openLogBatchModal} style={{ ...btnSecondary, color: '#55efc4', borderColor: 'rgba(85,239,196,0.3)' }}><ClipboardList size={16} /> Log Batch</button>
-                  <button onClick={addBatchToList} style={btnPrimary}><Plus size={18} /> Add to List</button>
+                  {batchList.some(b => b.id === currentBatch.id) ? (
+                    <button onClick={() => {
+                      setBatchList(prev => prev.map(b => b.id === currentBatch.id ? { ...currentBatch } : b));
+                      setCurrentBatch({ ...currentBatch, id: `BATCH-${Date.now()}` }); // Reset ID for new batch
+                    }} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #55efc4 0%, #00b894 100%)' }}><Check size={18} /> Update Batch</button>
+                  ) : (
+                    <button onClick={addBatchToList} style={btnPrimary}><Plus size={18} /> Add to List</button>
+                  )}
                 </div>
               </div>
 
@@ -2359,7 +2366,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
-                          {['Recipe', 'Qty', 'Size', 'Cost/Each', 'Batch Cost', 'Batch Profit', ''].map(h => (
+                          {['Recipe', 'Qty', 'Size', 'Cost/Each', 'Batch Cost', 'Batch Profit', 'Actions'].map(h => (
                             <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>
                           ))}
                         </tr>
@@ -2376,7 +2383,15 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <td style={{ padding: '14px 16px' }}>{formatCurrency(c.totalBatchCost)}</td>
                               <td style={{ padding: '14px 16px', color: '#55efc4', fontWeight: 600 }}>{formatCurrency(c.totalBatchProfit)}</td>
                               <td style={{ padding: '14px 16px' }}>
-                                <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <button onClick={() => {
+                                    // Load batch into currentBatch for editing
+                                    setCurrentBatch({ ...b });
+                                    // Scroll to top of batch details
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                                  <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                </div>
                               </td>
                             </tr>
                           );
