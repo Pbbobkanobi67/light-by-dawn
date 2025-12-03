@@ -2900,6 +2900,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pricing Engine</h2>
                   <p style={{ color: 'rgba(252,228,214,0.6)' }}>Set your pricing tiers and analyze margins</p>
                 </div>
+                <button onClick={() => { setCurrentBatch(prev => ({ ...prev, recipe: pricingRecipe, size: pricingRecipeData?.size || 9, foLoad: (pricingRecipeData?.foLoad || 10) / 100 })); setActiveTab('calculator'); }} style={btnPrimary}><Calculator size={18} /> Build Batch</button>
               </div>
 
               {/* Recipe Selector - Prominent Card */}
