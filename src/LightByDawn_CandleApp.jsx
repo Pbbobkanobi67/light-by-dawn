@@ -1916,7 +1916,23 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div>
                         <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Recipe</label>
-                        <select value={currentBatch.recipe} onChange={e => { const r = recipes.find(rec => rec.name === e.target.value); if (r) setCurrentBatch({ ...currentBatch, recipe: r.name, size: r.size, foLoad: r.foLoad / 100 }); }} style={inputStyle}>
+                        <select value={currentBatch.recipe} onChange={e => {
+                          const r = recipes.find(rec => rec.name === e.target.value);
+                          if (r) {
+                            // Calculate avg fragrance cost from recipe components
+                            let avgFoCost = 0;
+                            if (r.components?.length > 0) {
+                              const costs = r.components.map(c => {
+                                const frag = fragrances.find(f => f.name === c.fragrance);
+                                // Use 16oz price as base cost per oz (most common bulk size)
+                                const pricePerOz = frag?.prices?.['16'] ? frag.prices['16'] / 16 : 1.97;
+                                return pricePerOz * (c.percent / 100);
+                              });
+                              avgFoCost = Math.round(costs.reduce((sum, c) => sum + c, 0) * 100) / 100;
+                            }
+                            setCurrentBatch({ ...currentBatch, recipe: r.name, size: r.size || 9, foLoad: (r.foLoad || 10) / 100, avgFoCost });
+                          }
+                        }} style={inputStyle}>
                           {recipes.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
                         </select>
                       </div>
