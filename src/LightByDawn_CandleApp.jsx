@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -175,6 +175,13 @@ export default function CandleBusinessApp() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
   const [showAiPanel, setShowAiPanel] = useState(false);
+
+  // General AI Chat state
+  const [showGeneralChat, setShowGeneralChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
   const [fragranceSort, setFragranceSort] = useState('name'); // 'name', 'type', 'vendor', 'cost', 'stock'
   const [recipeSort, setRecipeSort] = useState('name'); // 'name', 'size', 'profit', 'canMake', 'components'
   const [recipeView, setRecipeView] = useState('grid'); // 'grid', 'list', 'table'
@@ -1133,6 +1140,58 @@ Keep your response concise but helpful. Format with clear sections.`
       setAiResponse("Sorry, I couldn't connect to the AI assistant. Please try again later.");
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  // General AI Chat function
+  const sendChatMessage = async (message) => {
+    if (!message.trim() || chatLoading) return;
+
+    const userMessage = { role: 'user', content: message };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setChatLoading(true);
+
+    // Build inventory context
+    const inventoryContext = {
+      materials: materials.map(m => ({
+        name: m.name, category: m.category, qtyOnHand: m.qtyOnHand, unit: m.unit,
+        costPerUnit: m.packageCost / m.packageSize
+      })),
+      fragrances: fragrances.filter(f => !f.archived).map(f => {
+        const totalOz = Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0;
+        return { name: f.name, type: f.type, vendor: f.vendor, totalOz, maxLoad: f.maxLoad };
+      }),
+      recipes: recipes.filter(r => !r.archived).map(r => ({
+        name: r.name, vibe: r.vibe, size: r.size, components: r.components
+      }))
+    };
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          system: `You are a helpful AI assistant for a candle-making business called "Light By Dawn". You have access to the current inventory and can help with questions about fragrances, materials, recipes, candle making techniques, and business suggestions.
+
+Current Inventory Summary:
+${JSON.stringify(inventoryContext, null, 2)}
+
+Be concise, friendly, and helpful. When suggesting recipes or products, reference the actual inventory available.`,
+          messages: [...chatMessages, userMessage].map(m => ({ role: m.role, content: m.content }))
+        })
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.content[0].text }]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I couldn't connect. Please try again." }]);
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -2241,6 +2300,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                               </div>
                               <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                                 <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                <button onClick={() => window.open(`https://www.amazon.com/s?k=fragrance+oil+${encodeURIComponent(f.name)}`, '_blank')} style={{ background: 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff9f6b', cursor: 'pointer' }} title="Search on Amazon"><ExternalLink size={12} /></button>
                                 <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={12} /></button>
                                 <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
                               </div>
@@ -2280,6 +2340,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                             </div>
                             <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                              <button onClick={() => window.open(`https://www.amazon.com/s?k=fragrance+oil+${encodeURIComponent(f.name)}`, '_blank')} style={{ background: 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff9f6b', cursor: 'pointer' }} title="Search on Amazon"><ExternalLink size={14} /></button>
                               <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
                               <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
                             </div>
@@ -2322,8 +2383,9 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                                 <td style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
                                   <div style={{ display: 'flex', gap: '6px' }}>
                                     <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                    <button onClick={() => window.open(`https://www.amazon.com/s?k=fragrance+oil+${encodeURIComponent(f.name)}`, '_blank')} style={{ background: 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff9f6b', cursor: 'pointer' }} title="Search on Amazon"><ExternalLink size={12} /></button>
                                     <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={12} /></button>
-                                <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                                    <button onClick={(e) => deleteFragrance(f.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
                                   </div>
                                 </td>
                               </tr>
@@ -3220,6 +3282,103 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <button onClick={confirmClearShoppingList} style={{ padding: '12px 24px', background: 'rgba(255,107,107,0.3)', border: '1px solid rgba(255,107,107,0.5)', borderRadius: '10px', color: '#ff6b6b', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}><Trash2 size={16} /> Clear All</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating AI Chat Button */}
+      <button
+        onClick={() => setShowGeneralChat(!showGeneralChat)}
+        style={{
+          position: 'fixed', bottom: '24px', right: '24px', width: '60px', height: '60px',
+          borderRadius: '50%', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
+          border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(162,155,254,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 900,
+          transition: 'transform 0.2s ease'
+        }}
+        title="AI Assistant"
+      >
+        <MessageSquare size={28} color="#1a0a1e" />
+      </button>
+
+      {/* General AI Chat Panel */}
+      {showGeneralChat && (
+        <div style={{
+          position: 'fixed', bottom: '100px', right: '24px', width: '400px', maxHeight: '500px',
+          background: 'linear-gradient(180deg, #2d1b3d 0%, #1a0a1e 100%)', borderRadius: '20px',
+          border: '1px solid rgba(162,155,254,0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          display: 'flex', flexDirection: 'column', zIndex: 901, overflow: 'hidden'
+        }}>
+          {/* Header */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(162,155,254,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={20} color="#1a0a1e" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 600 }}>AI Assistant</h3>
+                <p style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Ask anything about your candle business</p>
+              </div>
+            </div>
+            <button onClick={() => setShowGeneralChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.5)', cursor: 'pointer' }}><X size={18} /></button>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '250px', maxHeight: '300px' }}>
+            {chatMessages.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(252,228,214,0.4)' }}>
+                <Sparkles size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                <p style={{ fontSize: '14px', marginBottom: '8px' }}>Hi! I'm your candle business assistant.</p>
+                <p style={{ fontSize: '12px' }}>Ask me about inventory, recipes, or suggestions!</p>
+              </div>
+            )}
+            {chatMessages.map((msg, i) => (
+              <div key={i} style={{
+                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '85%', padding: '10px 14px', borderRadius: '12px',
+                background: msg.role === 'user' ? 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)' : 'rgba(255,255,255,0.08)',
+                color: msg.role === 'user' ? '#1a0a1e' : '#fce4d6',
+                fontSize: '13px', lineHeight: '1.5', whiteSpace: 'pre-wrap'
+              }}>
+                {msg.content}
+              </div>
+            ))}
+            {chatLoading && (
+              <div style={{ alignSelf: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.08)', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a29bfe', animation: 'pulse 1s ease-in-out infinite' }} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a29bfe', animation: 'pulse 1s ease-in-out infinite', animationDelay: '0.2s' }} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a29bfe', animation: 'pulse 1s ease-in-out infinite', animationDelay: '0.4s' }} />
+                </div>
+                <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }`}</style>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <form onSubmit={(e) => { e.preventDefault(); sendChatMessage(chatInput); }} style={{ padding: '12px 16px', borderTop: '1px solid rgba(162,155,254,0.2)', display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Ask about inventory, recipes..."
+              style={{
+                flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(162,155,254,0.2)',
+                borderRadius: '10px', color: '#fce4d6', fontSize: '13px', outline: 'none'
+              }}
+              disabled={chatLoading}
+            />
+            <button
+              type="submit"
+              disabled={chatLoading || !chatInput.trim()}
+              style={{
+                padding: '10px 14px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
+                border: 'none', borderRadius: '10px', cursor: chatLoading ? 'not-allowed' : 'pointer',
+                opacity: chatLoading || !chatInput.trim() ? 0.5 : 1
+              }}
+            >
+              <Send size={18} color="#1a0a1e" />
+            </button>
+          </form>
         </div>
       )}
     </div>
