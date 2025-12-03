@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -181,6 +181,8 @@ export default function CandleBusinessApp() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem('anthropicApiKey') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [chatPosition, setChatPosition] = useState({ x: null, y: null }); // null = default position
   const [chatSize, setChatSize] = useState({ width: 380, height: 450 });
   const [isDragging, setIsDragging] = useState(false);
@@ -1148,9 +1150,26 @@ Keep your response concise but helpful. Format with clear sections.`
     }
   };
 
+  // Save API key to localStorage
+  const saveApiKey = (key) => {
+    setAnthropicApiKey(key);
+    localStorage.setItem('anthropicApiKey', key);
+    setShowApiKeyInput(false);
+  };
+
   // General AI Chat function
   const sendChatMessage = async (message) => {
     if (!message.trim() || chatLoading) return;
+
+    if (!anthropicApiKey) {
+      setChatMessages(prev => [...prev,
+        { role: 'user', content: message },
+        { role: 'assistant', content: "Please set your Anthropic API key first. Click the gear icon in the header to add your key.\n\nGet your API key at: https://console.anthropic.com/account/keys" }
+      ]);
+      setChatInput('');
+      setShowApiKeyInput(true);
+      return;
+    }
 
     const userMessage = { role: 'user', content: message };
     setChatMessages(prev => [...prev, userMessage]);
@@ -1173,9 +1192,14 @@ Keep your response concise but helpful. Format with clear sections.`
     };
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      // Use CORS proxy for browser compatibility
+      const response = await fetch("https://corsproxy.io/?https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicApiKey,
+          "anthropic-version": "2023-06-01"
+        },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1500,
@@ -1189,12 +1213,15 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
         })
       });
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API error: ${response.status}`);
+      }
       const data = await response.json();
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.content[0].text }]);
     } catch (error) {
       console.error("Chat error:", error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I couldn't connect. Please try again." }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message}\n\nPlease check your API key is valid.` }]);
     } finally {
       setChatLoading(false);
     }
@@ -3413,19 +3440,58 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               </div>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 600 }}>AI Assistant</h3>
-                <p style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Drag to move • Resize from corner</p>
+                <p style={{ fontSize: '11px', color: anthropicApiKey ? '#55efc4' : 'rgba(252,228,214,0.5)' }}>
+                  {anthropicApiKey ? 'API Connected' : 'API Key Required'}
+                </p>
               </div>
             </div>
-            <button onClick={() => setShowGeneralChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.5)', cursor: 'pointer' }}><X size={18} /></button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} style={{ background: anthropicApiKey ? 'rgba(85,239,196,0.2)' : 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: anthropicApiKey ? '#55efc4' : '#ff9f6b', cursor: 'pointer' }} title="API Key Settings"><Key size={16} /></button>
+              <button onClick={() => setShowGeneralChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.5)', cursor: 'pointer' }}><X size={18} /></button>
+            </div>
           </div>
+
+          {/* API Key Input */}
+          {showApiKeyInput && (
+            <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(162,155,254,0.2)' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.7)', marginBottom: '8px' }}>
+                Enter your Anthropic API key (<a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#a29bfe' }}>get one here</a>)
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="password"
+                  value={anthropicApiKey}
+                  onChange={(e) => setAnthropicApiKey(e.target.value)}
+                  placeholder="sk-ant-..."
+                  style={{
+                    flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(162,155,254,0.3)',
+                    borderRadius: '8px', color: '#fce4d6', fontSize: '12px', outline: 'none', fontFamily: 'monospace'
+                  }}
+                />
+                <button
+                  onClick={() => saveApiKey(anthropicApiKey)}
+                  style={{
+                    padding: '8px 16px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
+                    border: 'none', borderRadius: '8px', color: '#1a0a1e', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {chatMessages.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(252,228,214,0.4)' }}>
-                <Sparkles size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                <p style={{ fontSize: '14px', marginBottom: '8px' }}>Hi! I'm your candle business assistant.</p>
-                <p style={{ fontSize: '12px' }}>Ask me about inventory, recipes, or suggestions!</p>
+                <Key size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                <p style={{ fontSize: '14px', marginBottom: '8px' }}>
+                  {anthropicApiKey ? "Hi! I'm your candle business assistant." : "Click the key icon above to add your API key"}
+                </p>
+                <p style={{ fontSize: '12px' }}>
+                  {anthropicApiKey ? "Ask me about inventory, recipes, or suggestions!" : "You'll need an Anthropic API key to chat"}
+                </p>
               </div>
             )}
             {chatMessages.map((msg, i) => (
