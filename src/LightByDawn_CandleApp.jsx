@@ -1975,9 +1975,22 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Label</label>
-                            <select value={currentBatch.label} onChange={e => { if (e.target.value === 'none') { setCurrentBatch({ ...currentBatch, label: 'none', labelCost: 0 }); } else { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, label: e.target.value, labelCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); } }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.label} onChange={e => {
+                              if (e.target.value === 'none') {
+                                setCurrentBatch({ ...currentBatch, label: 'none', labelCost: 0 });
+                              } else if (e.target.value === 'standard-vinyl') {
+                                // Standard vinyl label price based on container size (brand + safety label)
+                                const size = currentBatch.size || 9;
+                                const labelCost = size <= 4 ? 0.08 : size <= 6 ? 0.10 : 0.12;
+                                setCurrentBatch({ ...currentBatch, label: 'standard-vinyl', labelCost });
+                              } else {
+                                const m = materials.find(mat => mat.name === e.target.value);
+                                setCurrentBatch({ ...currentBatch, label: e.target.value, labelCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 });
+                              }
+                            }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select label...</option>
                               <option value="none">No label ($0)</option>
+                              <option value="standard-vinyl">Standard Vinyl (brand + safety)</option>
                               {materials.filter(m => m.category === 'Label').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
