@@ -2341,6 +2341,22 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
               </div>
 
+              {/* Summary Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Fragrances</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#feca57' }}>{fragrances.filter(f => !f.archived).length}</div>
+                </div>
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Stock</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0), 0).toFixed(1)} oz</div>
+                </div>
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Value</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0))}</div>
+                </div>
+              </div>
+
               {/* Selection Bar */}
               {selectedFragrances.length > 0 && (
                 <div style={{ background: 'linear-gradient(135deg, rgba(162,155,254,0.2) 0%, rgba(255,159,243,0.15) 100%)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
