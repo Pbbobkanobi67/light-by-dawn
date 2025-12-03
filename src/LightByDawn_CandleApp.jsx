@@ -149,13 +149,15 @@ export default function CandleBusinessApp() {
     wax: '',
     container: '',
     wick: '',
+    label: '',
     packaging: '',
-    waxCostPerOz: 0.206,
-    containerCost: 1.17,
-    wickCost: 0.13,
-    labelCost: 0.03,
-    packagingCost: 0.74,
-    avgFoCost: 1.97,
+    fragranceOption: 'recipe', // 'recipe' = use recipe as-is, 'modify' = customize
+    waxCostPerOz: 0,
+    containerCost: 0,
+    wickCost: 0,
+    labelCost: 0,
+    packagingCost: 0,
+    avgFoCost: 0,
     retailPrice: 18.00,
   });
 
@@ -1929,31 +1931,59 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wax</label>
-                            <select value={currentBatch.wax} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wax: e.target.value, waxCostPerOz: m ? Math.round(m.packageCost / m.packageSize / 16 * 100) / 100 : currentBatch.waxCostPerOz }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.wax} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wax: e.target.value, waxCostPerOz: m ? Math.round(m.packageCost / m.packageSize / 16 * 100) / 100 : 0 }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select wax...</option>
                               {materials.filter(m => m.category === 'Wax').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Container</label>
-                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : currentBatch.containerCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select container...</option>
                               {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wick</label>
-                            <select value={currentBatch.wick} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wick: e.target.value, wickCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : currentBatch.wickCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.wick} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wick: e.target.value, wickCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select wick...</option>
                               {materials.filter(m => m.category === 'Wick').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
                           <div>
+                            <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Label</label>
+                            <select value={currentBatch.label} onChange={e => { if (e.target.value === 'none') { setCurrentBatch({ ...currentBatch, label: 'none', labelCost: 0 }); } else { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, label: e.target.value, labelCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); } }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                              <option value="">Select label...</option>
+                              <option value="none">No label ($0)</option>
+                              {materials.filter(m => m.category === 'Label').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Packaging</label>
-                            <select value={currentBatch.packaging} onChange={e => { if (e.target.value === 'none') { setCurrentBatch({ ...currentBatch, packaging: 'none', packagingCost: 0 }); } else { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, packaging: e.target.value, packagingCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : currentBatch.packagingCost }); } }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.packaging} onChange={e => { if (e.target.value === 'none') { setCurrentBatch({ ...currentBatch, packaging: 'none', packagingCost: 0 }); } else { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, packaging: e.target.value, packagingCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); } }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select packaging...</option>
                               <option value="none">No packaging ($0)</option>
                               {materials.filter(m => m.category === 'Packaging').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Fragrance</label>
+                            <select value={currentBatch.fragranceOption} onChange={e => {
+                              if (e.target.value === 'modify') {
+                                // Copy recipe and open edit modal
+                                const recipe = recipes.find(r => r.name === currentBatch.recipe);
+                                if (recipe) {
+                                  const newRecipe = { ...recipe, id: `RCP-${Date.now()}`, name: `${recipe.name} (Custom)` };
+                                  setRecipeForm(newRecipe);
+                                  setEditingRecipe(null);
+                                  setShowRecipeModal(true);
+                                }
+                              } else {
+                                setCurrentBatch({ ...currentBatch, fragranceOption: e.target.value });
+                              }
+                            }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                              <option value="recipe">Use Recipe</option>
+                              <option value="modify">Modify Recipe...</option>
                             </select>
                           </div>
                         </div>
