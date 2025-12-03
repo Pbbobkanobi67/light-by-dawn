@@ -181,7 +181,7 @@ export default function CandleBusinessApp() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem('anthropicApiKey') || '');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [chatPosition, setChatPosition] = useState({ x: null, y: null }); // null = default position
   const [chatSize, setChatSize] = useState({ width: 380, height: 450 });
@@ -1092,10 +1092,16 @@ export default function CandleBusinessApp() {
     setAiResponse(null);
   };
 
-  // AI Assistant for fragrance combinations
+  // AI Assistant for fragrance combinations (using Google Gemini)
   const getAiAdvice = async () => {
     if (selectedFragrances.length < 2) {
       alert('Please select at least 2 fragrances to get AI advice');
+      return;
+    }
+
+    if (!geminiApiKey) {
+      setShowAiPanel(true);
+      setAiResponse("Please set your Google Gemini API key first.\n\nClick the chat bubble in the bottom-right corner, then click the key icon to add your FREE API key.\n\nGet your key at: https://aistudio.google.com/apikey");
       return;
     }
 
@@ -1109,18 +1115,13 @@ export default function CandleBusinessApp() {
     setAiResponse(null);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [
-            { 
-              role: "user", 
-              content: `You are an expert candle maker and fragrance blender. I'm creating a candle and want to combine these fragrances: ${selectedFragranceDetails.join(', ')}.
+          contents: [{
+            role: "user",
+            parts: [{ text: `You are an expert candle maker and fragrance blender. I'm creating a candle and want to combine these fragrances: ${selectedFragranceDetails.join(', ')}.
 
 Please provide:
 1. **Compatibility Analysis**: How well do these scents work together?
@@ -1130,21 +1131,22 @@ Please provide:
 5. **Season/Occasion**: When is this blend best suited for?
 6. **Recipe Name Suggestions**: Give 2-3 creative names for this blend
 
-Keep your response concise but helpful. Format with clear sections.`
-            }
-          ]
+Keep your response concise but helpful. Format with clear sections.` }]
+          }]
         })
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API error: ${response.status}`);
       }
 
       const data = await response.json();
-      setAiResponse(data.content[0].text);
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+      setAiResponse(responseText);
     } catch (error) {
       console.error("Error getting AI advice:", error);
-      setAiResponse("Sorry, I couldn't connect to the AI assistant. Please try again later.");
+      setAiResponse(`Error: ${error.message}\n\nPlease check your API key is valid.`);
     } finally {
       setAiLoading(false);
     }
@@ -1152,19 +1154,19 @@ Keep your response concise but helpful. Format with clear sections.`
 
   // Save API key to localStorage
   const saveApiKey = (key) => {
-    setAnthropicApiKey(key);
-    localStorage.setItem('anthropicApiKey', key);
+    setGeminiApiKey(key);
+    localStorage.setItem('geminiApiKey', key);
     setShowApiKeyInput(false);
   };
 
-  // General AI Chat function
+  // General AI Chat function (using Google Gemini)
   const sendChatMessage = async (message) => {
     if (!message.trim() || chatLoading) return;
 
-    if (!anthropicApiKey) {
+    if (!geminiApiKey) {
       setChatMessages(prev => [...prev,
         { role: 'user', content: message },
-        { role: 'assistant', content: "Please set your Anthropic API key first. Click the gear icon in the header to add your key.\n\nGet your API key at: https://console.anthropic.com/account/keys" }
+        { role: 'model', content: "Please set your Google Gemini API key first. Click the key icon in the header to add your key.\n\nGet your FREE API key at: https://aistudio.google.com/apikey" }
       ]);
       setChatInput('');
       setShowApiKeyInput(true);
@@ -1191,25 +1193,26 @@ Keep your response concise but helpful. Format with clear sections.`
       }))
     };
 
+    // Build conversation history for Gemini format
+    const conversationHistory = chatMessages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
     try {
-      // Use CORS proxy for browser compatibility
-      const response = await fetch("https://corsproxy.io/?https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropicApiKey,
-          "anthropic-version": "2023-06-01"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1500,
-          system: `You are a helpful AI assistant for a candle-making business called "Light By Dawn". You have access to the current inventory and can help with questions about fragrances, materials, recipes, candle making techniques, and business suggestions.
+          systemInstruction: {
+            parts: [{ text: `You are a helpful AI assistant for a candle-making business called "Light By Dawn". You have access to the current inventory and can help with questions about fragrances, materials, recipes, candle making techniques, and business suggestions.
 
 Current Inventory Summary:
 ${JSON.stringify(inventoryContext, null, 2)}
 
-Be concise, friendly, and helpful. When suggesting recipes or products, reference the actual inventory available.`,
-          messages: [...chatMessages, userMessage].map(m => ({ role: m.role, content: m.content }))
+Be concise, friendly, and helpful. When suggesting recipes or products, reference the actual inventory available.` }]
+          },
+          contents: [...conversationHistory, { role: "user", parts: [{ text: message }] }]
         })
       });
 
@@ -1218,10 +1221,11 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
         throw new Error(errorData.error?.message || `API error: ${response.status}`);
       }
       const data = await response.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', content: data.content[0].text }]);
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+      setChatMessages(prev => [...prev, { role: 'model', content: responseText }]);
     } catch (error) {
       console.error("Chat error:", error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message}\n\nPlease check your API key is valid.` }]);
+      setChatMessages(prev => [...prev, { role: 'model', content: `Error: ${error.message}\n\nPlease check your API key is valid.` }]);
     } finally {
       setChatLoading(false);
     }
@@ -1304,18 +1308,20 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
     };
   }, [isResizing, handleResize, handleResizeEnd]);
 
-  // AI Profit Analysis
+  // AI Profit Analysis (using Google Gemini)
   const getProfitAnalysis = async () => {
+    if (!geminiApiKey) {
+      setProfitAnalysis("Please set your Google Gemini API key first.\n\nClick the chat bubble in the bottom-right corner, then click the key icon to add your FREE API key.\n\nGet your key at: https://aistudio.google.com/apikey");
+      return;
+    }
+
     setProfitAnalysisLoading(true);
     setProfitAnalysis(null);
     setProfitAnalysisTime(0);
-    
+
     console.log('🚀 Starting profit analysis...');
-    console.log('Materials count:', materials.length);
-    console.log('Fragrances count:', fragrances.length);
-    console.log('Recipes count:', recipes.length);
     const startTime = Date.now();
-    
+
     // Start a timer to show elapsed time
     const timerInterval = setInterval(() => {
       setProfitAnalysisTime(Math.floor((Date.now() - startTime) / 1000));
@@ -1348,7 +1354,6 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
     // Calculate costs and potential profits for each recipe
     const recipeEconomics = recipes.map(recipe => {
       try {
-        // Create a full batch object with all required parameters
         const batchObj = {
           recipe: recipe.name,
           quantity: 12,
@@ -1362,10 +1367,10 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
           avgFoCost: 1.97,
           retailPrice: recipe.size === 4 ? 14.00 : recipe.size === 6 ? 18.00 : 24.00
         };
-        
+
         const calc = calculateBatch(batchObj);
         const canMake = whatCanIMake.find(w => w.recipe.name === recipe.name);
-        
+
         return {
           name: recipe.name,
           size: recipe.size || 9,
@@ -1376,35 +1381,18 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
           maxCanMake: canMake?.maxQty || 0
         };
       } catch (e) {
-        console.error('Error calculating recipe:', recipe.name, e);
-        return {
-          name: recipe.name,
-          size: recipe.size || 9,
-          costPerCandle: '0.00',
-          suggestedPrice: '0.00',
-          profitPerCandle: '0.00',
-          profitMargin: '0.0',
-          maxCanMake: 0
-        };
+        return { name: recipe.name, size: recipe.size || 9, costPerCandle: '0.00', suggestedPrice: '0.00', profitPerCandle: '0.00', profitMargin: '0.0', maxCanMake: 0 };
       }
     });
-    
-    console.log('📊 Inventory prepared, calling AI API...');
-    console.log('Recipe economics:', recipeEconomics);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1500,
-          messages: [
-            { 
-              role: "user", 
-              content: `You are a candle business profit optimization expert. Analyze this inventory and help maximize profit.
+          contents: [{
+            role: "user",
+            parts: [{ text: `You are a candle business profit optimization expert. Analyze this inventory and help maximize profit.
 
 **CURRENT INVENTORY:**
 ${JSON.stringify(inventorySummary, null, 2)}
@@ -1425,28 +1413,25 @@ Based on this data, provide:
 
 5. **💡 QUICK WIN**: One actionable tip to increase profits this week.
 
-Keep it concise and actionable. Use bullet points. Focus on the numbers.`
-            }
-          ]
+Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
+          }]
         })
       });
-      
-      console.log('📡 API responded with status:', response.status);
 
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ Analysis complete!');
-      setProfitAnalysis(data.content[0].text);
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+      setProfitAnalysis(responseText);
     } catch (error) {
       console.error("❌ Error getting profit analysis:", error);
-      setProfitAnalysis("Sorry, I couldn't connect to the AI assistant. Please try again later.\n\nError: " + error.message);
+      setProfitAnalysis(`Error: ${error.message}\n\nPlease check your API key is valid.`);
     } finally {
       clearInterval(timerInterval);
       setProfitAnalysisLoading(false);
-      console.log(`⏱️ Total time: ${Math.floor((Date.now() - startTime) / 1000)} seconds`);
     }
   };
 
@@ -3440,13 +3425,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               </div>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 600 }}>AI Assistant</h3>
-                <p style={{ fontSize: '11px', color: anthropicApiKey ? '#55efc4' : 'rgba(252,228,214,0.5)' }}>
-                  {anthropicApiKey ? 'API Connected' : 'API Key Required'}
+                <p style={{ fontSize: '11px', color: geminiApiKey ? '#55efc4' : 'rgba(252,228,214,0.5)' }}>
+                  {geminiApiKey ? 'Gemini Connected' : 'API Key Required'}
                 </p>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} style={{ background: anthropicApiKey ? 'rgba(85,239,196,0.2)' : 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: anthropicApiKey ? '#55efc4' : '#ff9f6b', cursor: 'pointer' }} title="API Key Settings"><Key size={16} /></button>
+              <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} style={{ background: geminiApiKey ? 'rgba(85,239,196,0.2)' : 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: geminiApiKey ? '#55efc4' : '#ff9f6b', cursor: 'pointer' }} title="API Key Settings"><Key size={16} /></button>
               <button onClick={() => setShowGeneralChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.5)', cursor: 'pointer' }}><X size={18} /></button>
             </div>
           </div>
@@ -3455,21 +3440,21 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
           {showApiKeyInput && (
             <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(162,155,254,0.2)' }}>
               <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.7)', marginBottom: '8px' }}>
-                Enter your Anthropic API key (<a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#a29bfe' }}>get one here</a>)
+                Enter your FREE Google Gemini API key (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{ color: '#a29bfe' }}>get one here</a>)
               </p>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="password"
-                  value={anthropicApiKey}
-                  onChange={(e) => setAnthropicApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="AIza..."
                   style={{
                     flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(162,155,254,0.3)',
                     borderRadius: '8px', color: '#fce4d6', fontSize: '12px', outline: 'none', fontFamily: 'monospace'
                   }}
                 />
                 <button
-                  onClick={() => saveApiKey(anthropicApiKey)}
+                  onClick={() => saveApiKey(geminiApiKey)}
                   style={{
                     padding: '8px 16px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
                     border: 'none', borderRadius: '8px', color: '#1a0a1e', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
@@ -3487,10 +3472,10 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(252,228,214,0.4)' }}>
                 <Key size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
                 <p style={{ fontSize: '14px', marginBottom: '8px' }}>
-                  {anthropicApiKey ? "Hi! I'm your candle business assistant." : "Click the key icon above to add your API key"}
+                  {geminiApiKey ? "Hi! I'm your candle business assistant." : "Click the key icon above to add your FREE API key"}
                 </p>
                 <p style={{ fontSize: '12px' }}>
-                  {anthropicApiKey ? "Ask me about inventory, recipes, or suggestions!" : "You'll need an Anthropic API key to chat"}
+                  {geminiApiKey ? "Ask me about inventory, recipes, or suggestions!" : "Powered by Google Gemini - 100% free!"}
                 </p>
               </div>
             )}

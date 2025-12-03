@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(Format-Table Id, ProcessName -AutoSize)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
