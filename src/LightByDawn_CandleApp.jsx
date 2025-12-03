@@ -208,6 +208,11 @@ export default function CandleBusinessApp() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'error'
 
+  // Track loaded data counts to prevent syncing empty data over real data
+  // CRITICAL: These refs must be declared BEFORE the load useEffect
+  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0 });
+  const syncEnabledRef = React.useRef(false);
+
   // Load data from Supabase on mount
   useEffect(() => {
     const loadFromSupabase = async () => {
@@ -223,11 +228,29 @@ export default function CandleBusinessApp() {
         ]);
 
         // If we have data in Supabase, use it; otherwise keep localStorage/defaults
-        if (materialsRes.data?.length > 0) setMaterials(toCamelCase(materialsRes.data));
-        if (fragrancesRes.data?.length > 0) setFragrances(toCamelCase(fragrancesRes.data));
-        if (recipesRes.data?.length > 0) setRecipes(toCamelCase(recipesRes.data));
-        if (batchHistoryRes.data?.length > 0) setBatchHistory(toCamelCase(batchHistoryRes.data));
-        if (batchListRes.data?.length > 0) setBatchList(toCamelCase(batchListRes.data));
+        // CRITICAL: Track loaded counts to prevent accidental data wipes during hot reload
+        if (materialsRes.data?.length > 0) {
+          setMaterials(toCamelCase(materialsRes.data));
+          loadedCountsRef.current.materials = materialsRes.data.length;
+        }
+        if (fragrancesRes.data?.length > 0) {
+          setFragrances(toCamelCase(fragrancesRes.data));
+          loadedCountsRef.current.fragrances = fragrancesRes.data.length;
+        }
+        if (recipesRes.data?.length > 0) {
+          setRecipes(toCamelCase(recipesRes.data));
+          loadedCountsRef.current.recipes = recipesRes.data.length;
+        }
+        if (batchHistoryRes.data?.length > 0) {
+          setBatchHistory(toCamelCase(batchHistoryRes.data));
+          loadedCountsRef.current.batchHistory = batchHistoryRes.data.length;
+        }
+        if (batchListRes.data?.length > 0) {
+          setBatchList(toCamelCase(batchListRes.data));
+          loadedCountsRef.current.batchList = batchListRes.data.length;
+        }
+
+        console.log('Loaded from Supabase:', loadedCountsRef.current);
 
         setSyncStatus('idle');
       } catch (error) {
@@ -256,44 +279,56 @@ export default function CandleBusinessApp() {
   // Persist active tab to localStorage
   useEffect(() => { saveToStorage('activeTab', activeTab); }, [activeTab]);
 
-  // Track if initial load is complete (prevents syncing stale data on hot reload)
-  const initialLoadRef = React.useRef(false);
-
-  // Mark initial load complete after a delay (ensures Supabase data is in state)
+  // Enable sync only after initial load + delay
   useEffect(() => {
-    if (dataLoaded && !initialLoadRef.current) {
+    if (dataLoaded && !syncEnabledRef.current) {
       const timer = setTimeout(() => {
-        initialLoadRef.current = true;
-      }, 1000);
+        syncEnabledRef.current = true;
+        console.log('Supabase sync enabled');
+      }, 2000); // 2 second delay for safety
       return () => clearTimeout(timer);
     }
   }, [dataLoaded]);
 
-  // Persist data to localStorage and Supabase (only after initial load)
+  // Safe sync function - NEVER syncs empty data if we loaded real data
+  const safeSyncToSupabase = useCallback(async (table, data, loadedKey) => {
+    if (!syncEnabledRef.current) return;
+
+    // CRITICAL: Never sync empty/small data if we loaded more data
+    const loadedCount = loadedCountsRef.current[loadedKey] || 0;
+    if (data.length < loadedCount && loadedCount > 0) {
+      console.warn(`BLOCKED: Attempted to sync ${data.length} items to ${table} but loaded ${loadedCount}. This would wipe data!`);
+      return;
+    }
+
+    await syncToSupabase(table, data);
+  }, [syncToSupabase]);
+
+  // Persist data to localStorage and Supabase (with safety checks)
   useEffect(() => {
     saveToStorage('materials', materials);
-    if (initialLoadRef.current) syncToSupabase('materials', materials);
-  }, [materials, syncToSupabase]);
+    safeSyncToSupabase('materials', materials, 'materials');
+  }, [materials, safeSyncToSupabase]);
 
   useEffect(() => {
     saveToStorage('fragrances', fragrances);
-    if (initialLoadRef.current) syncToSupabase('fragrances', fragrances);
-  }, [fragrances, syncToSupabase]);
+    safeSyncToSupabase('fragrances', fragrances, 'fragrances');
+  }, [fragrances, safeSyncToSupabase]);
 
   useEffect(() => {
     saveToStorage('recipes', recipes);
-    if (initialLoadRef.current) syncToSupabase('recipes', recipes);
-  }, [recipes, syncToSupabase]);
+    safeSyncToSupabase('recipes', recipes, 'recipes');
+  }, [recipes, safeSyncToSupabase]);
 
   useEffect(() => {
     saveToStorage('batchHistory', batchHistory);
-    if (initialLoadRef.current) syncToSupabase('batch_history', batchHistory);
-  }, [batchHistory, syncToSupabase]);
+    safeSyncToSupabase('batch_history', batchHistory, 'batchHistory');
+  }, [batchHistory, safeSyncToSupabase]);
 
   useEffect(() => {
     saveToStorage('batchList', batchList);
-    if (initialLoadRef.current) syncToSupabase('batch_list', batchList);
-  }, [batchList, syncToSupabase]);
+    safeSyncToSupabase('batch_list', batchList, 'batchList');
+  }, [batchList, safeSyncToSupabase]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
