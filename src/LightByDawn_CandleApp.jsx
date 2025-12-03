@@ -643,8 +643,25 @@ export default function CandleBusinessApp() {
       }
     }
 
+    // Check fragrances - calculate amount needed per component
+    const totalFoOz = currentBatch.size * currentBatch.foLoad * quantity;
+    for (const comp of selectedRecipe.components || []) {
+      const frag = fragrances.find(f => f.name === comp.fragrance);
+      if (!frag) {
+        return { canMake: false, reason: `Fragrance "${comp.fragrance}" not found in inventory` };
+      }
+      // Calculate oz needed for this component
+      const ozNeeded = totalFoOz * (comp.percent / 100);
+      // Calculate total oz available from all sizes
+      const quantities = frag.quantities || {};
+      const totalAvailable = Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0);
+      if (totalAvailable < ozNeeded) {
+        return { canMake: false, reason: `Need ${ozNeeded.toFixed(2)} oz ${comp.fragrance}, have ${totalAvailable.toFixed(2)} oz` };
+      }
+    }
+
     return { canMake: true, reason: 'Ready to make!' };
-  }, [selectedRecipe, currentBatch, materials]);
+  }, [selectedRecipe, currentBatch, materials, fragrances]);
 
   // What can I make - calculate for all recipes
   const whatCanIMake = useMemo(() => {
