@@ -2062,11 +2062,58 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
 
                   <div style={{ background: 'linear-gradient(135deg, rgba(85,239,196,0.15) 0%, rgba(85,239,196,0.05) 100%)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: '#55efc4' }}>Profit Analysis</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Profit per Candle</span><span style={{ fontWeight: 600, color: '#55efc4' }}>{formatCurrency(currentCalc.profitPerCandle)}</span></div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Profit Margin</span><span style={{ fontWeight: 600, color: '#55efc4' }}>{formatPercent(currentCalc.profitMargin)}</span></div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#55efc4' }}>Pricing & Margins</h3>
+
+                    {/* Retail Price Input */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Retail Price</label>
+                      <input type="number" step="0.01" value={currentBatch.retailPrice} onChange={e => setCurrentBatch({ ...currentBatch, retailPrice: parseFloat(e.target.value) || 0 })} style={{ ...inputStyle, padding: '12px', fontSize: '18px', fontWeight: 600, textAlign: 'center' }} />
                     </div>
+
+                    {/* Quick Margin Buttons */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '8px', textTransform: 'uppercase' }}>Set by Target Margin</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {[50, 60, 65, 70].map(margin => {
+                          const targetPrice = currentCalc.totalCostPerCandle / (1 - margin / 100);
+                          return (
+                            <button key={margin} onClick={() => setCurrentBatch({ ...currentBatch, retailPrice: Math.ceil(targetPrice) })} style={{ flex: 1, padding: '8px 4px', background: currentCalc.profitMargin * 100 >= margin - 2 && currentCalc.profitMargin * 100 <= margin + 2 ? 'rgba(85,239,196,0.3)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', color: '#fce4d6', cursor: 'pointer', fontSize: '12px' }}>
+                              <div style={{ fontWeight: 600 }}>{margin}%</div>
+                              <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>{formatCurrency(targetPrice)}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Profit Display */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', borderTop: '1px solid rgba(85,239,196,0.2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Profit per Candle</span>
+                        <span style={{ fontWeight: 600, color: currentCalc.profitPerCandle > 0 ? '#55efc4' : '#ff6b6b' }}>{formatCurrency(currentCalc.profitPerCandle)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Profit Margin</span>
+                        <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, background: currentCalc.profitMargin > 0.6 ? 'rgba(85,239,196,0.3)' : currentCalc.profitMargin > 0.4 ? 'rgba(254,202,87,0.3)' : 'rgba(255,107,107,0.3)', color: currentCalc.profitMargin > 0.6 ? '#55efc4' : currentCalc.profitMargin > 0.4 ? '#feca57' : '#ff6b6b' }}>{formatPercent(currentCalc.profitMargin)}</span>
+                      </div>
+                    </div>
+
+                    {/* Suggested Wholesale Tiers */}
+                    {currentCalc.totalCostPerCandle > 0 && (
+                      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(85,239,196,0.2)' }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '8px', textTransform: 'uppercase' }}>Suggested Tier Pricing</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                          <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                            <div style={{ color: 'rgba(252,228,214,0.5)' }}>Wholesale (10+)</div>
+                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.45)}</div>
+                          </div>
+                          <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                            <div style={{ color: 'rgba(252,228,214,0.5)' }}>Bulk (50+)</div>
+                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.35)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(255,159,107,0.3)', borderRadius: '16px', padding: '24px' }}>
