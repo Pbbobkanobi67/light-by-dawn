@@ -603,64 +603,66 @@ export default function CandleBusinessApp() {
     return { canMake: true, reason: 'Ready to make!', maxQty: quantity };
   };
 
-  // Check if current batch has enough stock (uses selected materials from Batch Builder)
+  // Check if current batch has enough stock - returns ALL shortages
   const currentBatchStock = useMemo(() => {
-    if (!selectedRecipe) return { canMake: true, reason: '' };
+    if (!selectedRecipe) return { canMake: true, shortages: [], inStock: [], allNeeds: [] };
     const quantity = currentBatch.quantity;
     const needs = calculateRecipeMaterials(selectedRecipe, quantity);
+    const shortages = [];
+    const inStock = [];
+    const allNeeds = [];
 
-    // Check wax - use selected wax or any wax if not selected
+    // Check wax
     const selectedWax = currentBatch.wax ? materials.find(m => m.name === currentBatch.wax) : null;
-    const waxLbsNeeded = needs.wax / 16;
-    if (selectedWax) {
-      if (selectedWax.qtyOnHand < waxLbsNeeded) {
-        return { canMake: false, reason: `Need ${waxLbsNeeded.toFixed(2)} lbs ${selectedWax.name}, have ${selectedWax.qtyOnHand} lbs` };
-      }
+    const waxLbsNeeded = Math.round(needs.wax / 16 * 100) / 100;
+    const waxName = selectedWax?.name || 'Wax';
+    const waxHave = selectedWax ? selectedWax.qtyOnHand : materials.filter(m => m.category === 'Wax').reduce((sum, m) => sum + m.qtyOnHand, 0);
+    allNeeds.push({ name: waxName, category: 'Wax', needed: waxLbsNeeded, have: waxHave, unit: 'lbs' });
+    if (waxHave < waxLbsNeeded) {
+      shortages.push({ name: waxName, needed: waxLbsNeeded, have: waxHave, unit: 'lbs', toOrder: Math.round((waxLbsNeeded - waxHave) * 100) / 100 });
     } else {
-      const totalWax = materials.filter(m => m.category === 'Wax').reduce((sum, m) => sum + m.qtyOnHand, 0);
-      if (totalWax < waxLbsNeeded) {
-        return { canMake: false, reason: `Need ${waxLbsNeeded.toFixed(2)} lbs wax, have ${totalWax} lbs` };
-      }
+      inStock.push({ name: waxName, needed: waxLbsNeeded, have: waxHave, unit: 'lbs' });
     }
 
-    // Check container - use selected container or recipe default
-    const containerName = currentBatch.container || selectedRecipe.container;
+    // Check container
+    const containerName = currentBatch.container || selectedRecipe.container || 'Container';
     const container = materials.find(m => m.name === containerName);
-    if (!container || container.qtyOnHand < quantity) {
-      return { canMake: false, reason: `Need ${quantity} containers, have ${container?.qtyOnHand || 0}` };
-    }
-
-    // Check wick - use selected wick or any wick
-    const selectedWick = currentBatch.wick ? materials.find(m => m.name === currentBatch.wick) : null;
-    if (selectedWick) {
-      if (selectedWick.qtyOnHand < quantity) {
-        return { canMake: false, reason: `Need ${quantity} ${selectedWick.name}, have ${selectedWick.qtyOnHand}` };
-      }
+    const containerHave = container?.qtyOnHand || 0;
+    allNeeds.push({ name: containerName, category: 'Container', needed: quantity, have: containerHave, unit: 'pcs' });
+    if (containerHave < quantity) {
+      shortages.push({ name: containerName, needed: quantity, have: containerHave, unit: 'pcs', toOrder: quantity - containerHave });
     } else {
-      const totalWicks = materials.filter(m => m.category === 'Wick').reduce((sum, m) => sum + m.qtyOnHand, 0);
-      if (totalWicks < quantity) {
-        return { canMake: false, reason: `Need ${quantity} wicks, have ${totalWicks}` };
-      }
+      inStock.push({ name: containerName, needed: quantity, have: containerHave, unit: 'pcs' });
     }
 
-    // Check fragrances - calculate amount needed per component
+    // Check wick
+    const selectedWick = currentBatch.wick ? materials.find(m => m.name === currentBatch.wick) : null;
+    const wickName = selectedWick?.name || 'Wicks';
+    const wickHave = selectedWick ? selectedWick.qtyOnHand : materials.filter(m => m.category === 'Wick').reduce((sum, m) => sum + m.qtyOnHand, 0);
+    allNeeds.push({ name: wickName, category: 'Wick', needed: quantity, have: wickHave, unit: 'pcs' });
+    if (wickHave < quantity) {
+      shortages.push({ name: wickName, needed: quantity, have: wickHave, unit: 'pcs', toOrder: quantity - wickHave });
+    } else {
+      inStock.push({ name: wickName, needed: quantity, have: wickHave, unit: 'pcs' });
+    }
+
+    // Check fragrances
     const totalFoOz = currentBatch.size * currentBatch.foLoad * quantity;
     for (const comp of selectedRecipe.components || []) {
       const frag = fragrances.find(f => f.name === comp.fragrance);
-      if (!frag) {
-        return { canMake: false, reason: `Fragrance "${comp.fragrance}" not found in inventory` };
-      }
-      // Calculate oz needed for this component
-      const ozNeeded = totalFoOz * (comp.percent / 100);
-      // Calculate total oz available from all sizes
-      const quantities = frag.quantities || {};
-      const totalAvailable = Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0);
-      if (totalAvailable < ozNeeded) {
-        return { canMake: false, reason: `Need ${ozNeeded.toFixed(2)} oz ${comp.fragrance}, have ${totalAvailable.toFixed(2)} oz` };
+      const ozNeeded = Math.round(totalFoOz * (comp.percent / 100) * 100) / 100;
+      const quantities = frag?.quantities || {};
+      const totalAvailable = Math.round(Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0) * 100) / 100;
+
+      allNeeds.push({ name: comp.fragrance, category: 'Fragrance', needed: ozNeeded, have: totalAvailable, unit: 'oz' });
+      if (!frag || totalAvailable < ozNeeded) {
+        shortages.push({ name: comp.fragrance, needed: ozNeeded, have: totalAvailable, unit: 'oz', toOrder: Math.round((ozNeeded - totalAvailable) * 100) / 100 });
+      } else {
+        inStock.push({ name: comp.fragrance, needed: ozNeeded, have: totalAvailable, unit: 'oz' });
       }
     }
 
-    return { canMake: true, reason: 'Ready to make!' };
+    return { canMake: shortages.length === 0, shortages, inStock, allNeeds };
   }, [selectedRecipe, currentBatch, materials, fragrances]);
 
   // What can I make - calculate for all recipes
@@ -2067,22 +2069,44 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         </div>
                       </div>
 
-                      {/* Stock Check Warning */}
-                      {!currentBatchStock.canMake && (
-                        <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '8px', padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <AlertTriangle size={18} color="#ff6b6b" />
-                          <div>
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff6b6b' }}>Insufficient Stock</div>
-                            <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{currentBatchStock.reason}</div>
+                      {/* Stock Check - Full Breakdown */}
+                      <div style={{ background: 'rgba(0,0,0,0.2)', border: `1px solid ${currentBatchStock.canMake ? 'rgba(85,239,196,0.3)' : 'rgba(255,107,107,0.3)'}`, borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                          {currentBatchStock.canMake ? <CheckCircle size={16} color="#55efc4" /> : <AlertTriangle size={16} color="#ff6b6b" />}
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: currentBatchStock.canMake ? '#55efc4' : '#ff6b6b' }}>
+                            {currentBatchStock.canMake ? 'All materials in stock' : `${currentBatchStock.shortages.length} item(s) need ordering`}
+                          </span>
+                        </div>
+
+                        {/* Shortages - Need to Order */}
+                        {currentBatchStock.shortages.length > 0 && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '10px', color: '#ff6b6b', textTransform: 'uppercase', marginBottom: '6px' }}>Need to Order</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {currentBatchStock.shortages.map((item, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '4px 8px', background: 'rgba(255,107,107,0.1)', borderRadius: '4px' }}>
+                                  <span style={{ color: '#fce4d6' }}>{item.name}</span>
+                                  <span style={{ color: '#ff6b6b' }}>Need {item.needed} {item.unit} (have {item.have}, order {item.toOrder})</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {currentBatchStock.canMake && (
-                        <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <CheckCircle size={16} color="#55efc4" />
-                          <span style={{ fontSize: '12px', color: '#55efc4' }}>Stock available for this batch</span>
-                        </div>
-                      )}
+                        )}
+
+                        {/* In Stock */}
+                        {currentBatchStock.inStock.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '10px', color: '#55efc4', textTransform: 'uppercase', marginBottom: '6px' }}>In Stock</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {currentBatchStock.inStock.map((item, i) => (
+                                <span key={i} style={{ fontSize: '10px', padding: '3px 6px', background: 'rgba(85,239,196,0.1)', borderRadius: '4px', color: 'rgba(252,228,214,0.7)' }}>
+                                  {item.name}: {item.needed} {item.unit}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <div>
