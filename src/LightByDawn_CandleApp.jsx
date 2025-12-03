@@ -146,6 +146,9 @@ export default function CandleBusinessApp() {
     quantity: 12,
     size: 4,
     foLoad: 0.10,
+    wax: '',
+    container: '',
+    wick: '',
     waxCostPerOz: 0.206,
     containerCost: 1.17,
     wickCost: 0.13,
@@ -1830,6 +1833,34 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           </div>
                         </div>
                       )}
+
+                      {/* Material Selectors */}
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '16px' }}>
+                        <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '12px' }}>Materials</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wax</label>
+                            <select value={currentBatch.wax} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wax: e.target.value, waxCostPerOz: m ? m.packageCost / m.packageSize / 16 : currentBatch.waxCostPerOz }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                              <option value="">Select wax...</option>
+                              {materials.filter(m => m.category === 'Wax').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Container</label>
+                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? m.packageCost / m.packageSize : currentBatch.containerCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                              <option value="">Select container...</option>
+                              {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wick</label>
+                            <select value={currentBatch.wick} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wick: e.target.value, wickCost: m ? m.packageCost / m.packageSize : currentBatch.wickCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                              <option value="">Select wick...</option>
+                              {materials.filter(m => m.category === 'Wick').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
 
                       {/* Stock Check Warning */}
                       {!currentBatchStock.canMake && (
