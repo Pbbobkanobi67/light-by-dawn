@@ -3110,7 +3110,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Unit</label>
                   <select value={materialForm.unit} onChange={e => setMaterialForm({ ...materialForm, unit: e.target.value })} style={inputStyle}>
-                    {['unit', 'each', 'lb', 'oz', 'case', 'pack', 'roll', 'bottle'].map(u => <option key={u} value={u}>{u}</option>)}
+                    {['unit', 'each', 'jar', 'tin', 'lb', 'oz', 'case', 'pack', 'roll', 'bottle'].map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
                 <div>
