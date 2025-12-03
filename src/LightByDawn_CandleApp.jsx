@@ -3379,6 +3379,78 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
               ) : (
                 <>
+                  {/* Stock Status - What You Need to Order */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                    {/* Need to Order */}
+                    <div style={{ background: 'linear-gradient(135deg, rgba(255,107,107,0.15) 0%, rgba(255,107,107,0.05) 100%)', border: '2px solid rgba(255,107,107,0.4)', borderRadius: '16px', padding: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,107,107,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ShoppingCart size={20} color="#ff6b6b" />
+                        </div>
+                        <div>
+                          <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#ff6b6b' }}>Need to Order</h4>
+                          <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{batchListSummary.shortages.length} items</p>
+                        </div>
+                      </div>
+                      {batchListSummary.shortages.length === 0 ? (
+                        <div style={{ padding: '20px', background: 'rgba(85,239,196,0.1)', borderRadius: '10px', textAlign: 'center' }}>
+                          <CheckCircle size={24} color="#55efc4" style={{ marginBottom: '8px' }} />
+                          <div style={{ color: '#55efc4', fontWeight: 600 }}>Everything in stock!</div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                          {batchListSummary.shortages.map((item, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                              <div>
+                                <div style={{ fontWeight: 500, fontSize: '14px' }}>{item.name}</div>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{item.category}</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: 700, color: '#ff6b6b', fontSize: '16px' }}>{item.toOrder} {item.unit}</div>
+                                <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>need {item.needed} / have {item.have}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {batchListSummary.shortages.length > 0 && (
+                        <button onClick={() => {
+                          const text = batchListSummary.shortages.map(item => `${item.name} (${item.category}): ${item.toOrder} ${item.unit}`).join('\n');
+                          navigator.clipboard.writeText(text);
+                          alert('Order list copied to clipboard!');
+                        }} style={{ ...btnSecondary, width: '100%', marginTop: '16px', justifyContent: 'center' }}><Copy size={16} /> Copy Order List</button>
+                      )}
+                    </div>
+
+                    {/* In Stock */}
+                    <div style={{ background: 'linear-gradient(135deg, rgba(85,239,196,0.15) 0%, rgba(85,239,196,0.05) 100%)', border: '2px solid rgba(85,239,196,0.4)', borderRadius: '16px', padding: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(85,239,196,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <CheckCircle size={20} color="#55efc4" />
+                        </div>
+                        <div>
+                          <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#55efc4' }}>In Stock</h4>
+                          <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{batchListSummary.inStock.length} items ready</p>
+                        </div>
+                      </div>
+                      {batchListSummary.inStock.length === 0 ? (
+                        <div style={{ padding: '20px', background: 'rgba(255,107,107,0.1)', borderRadius: '10px', textAlign: 'center', color: 'rgba(252,228,214,0.6)' }}>
+                          No items in stock
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                          {batchListSummary.inStock.map((item, i) => (
+                            <div key={i} style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '12px' }}>
+                              <span style={{ fontWeight: 500 }}>{item.name}</span>
+                              <span style={{ color: '#55efc4', marginLeft: '8px' }}>{item.needed} {item.unit}</span>
+                              <span style={{ color: 'rgba(252,228,214,0.4)', marginLeft: '4px' }}>({item.have} avail)</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* By Recipe */}
                   <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '20px', marginBottom: '16px' }}>By Recipe</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
