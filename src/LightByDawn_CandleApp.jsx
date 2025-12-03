@@ -1840,21 +1840,21 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wax</label>
-                            <select value={currentBatch.wax} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wax: e.target.value, waxCostPerOz: m ? m.packageCost / m.packageSize / 16 : currentBatch.waxCostPerOz }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.wax} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wax: e.target.value, waxCostPerOz: m ? Math.round(m.packageCost / m.packageSize / 16 * 100) / 100 : currentBatch.waxCostPerOz }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select wax...</option>
                               {materials.filter(m => m.category === 'Wax').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Container</label>
-                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? m.packageCost / m.packageSize : currentBatch.containerCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : currentBatch.containerCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select container...</option>
                               {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Wick</label>
-                            <select value={currentBatch.wick} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wick: e.target.value, wickCost: m ? m.packageCost / m.packageSize : currentBatch.wickCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.wick} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, wick: e.target.value, wickCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : currentBatch.wickCost }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select wick...</option>
                               {materials.filter(m => m.category === 'Wick').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
@@ -1909,7 +1909,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       {[{ label: 'Wax $/oz', key: 'waxCostPerOz' }, { label: 'Container', key: 'containerCost' }, { label: 'Wick', key: 'wickCost' }, { label: 'Label', key: 'labelCost' }, { label: 'Packaging', key: 'packagingCost' }, { label: 'Avg FO $/oz', key: 'avgFoCost' }].map(item => (
                         <div key={item.key}>
                           <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>{item.label}</label>
-                          <input type="number" step="0.01" value={currentBatch[item.key]} onChange={e => setCurrentBatch({ ...currentBatch, [item.key]: parseFloat(e.target.value) || 0 })} style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }} />
+                          <input type="number" step="0.01" value={Math.round(currentBatch[item.key] * 100) / 100} onChange={e => setCurrentBatch({ ...currentBatch, [item.key]: parseFloat(e.target.value) || 0 })} style={{ ...inputStyle, padding: '8px 12px', fontSize: '13px' }} />
                         </div>
                       ))}
                     </div>
