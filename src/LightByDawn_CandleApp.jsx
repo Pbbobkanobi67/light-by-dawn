@@ -665,6 +665,81 @@ export default function CandleBusinessApp() {
     return { canMake: shortages.length === 0, shortages, inStock, allNeeds };
   }, [selectedRecipe, currentBatch, materials, fragrances]);
 
+  // Combined materials needed for ALL batches in batch list
+  const batchListSummary = useMemo(() => {
+    if (batchList.length === 0) return { totalNeeds: {}, shortages: [], inStock: [], canMakeAll: true };
+
+    // Aggregate all needs by item name
+    const totalNeeds = {};
+
+    for (const batch of batchList) {
+      const recipe = recipes.find(r => r.name === batch.recipe);
+      if (!recipe) continue;
+
+      const quantity = batch.quantity || 0;
+      const size = batch.size || 9;
+      const foLoad = batch.foLoad || 0.10;
+
+      // Wax (convert to lbs)
+      const waxOz = size * (1 - foLoad) * quantity;
+      const waxLbs = waxOz / 16;
+      const waxName = batch.wax || 'Wax';
+      totalNeeds[waxName] = totalNeeds[waxName] || { name: waxName, category: 'Wax', needed: 0, unit: 'lbs' };
+      totalNeeds[waxName].needed += waxLbs;
+
+      // Container
+      const containerName = batch.container || 'Container';
+      totalNeeds[containerName] = totalNeeds[containerName] || { name: containerName, category: 'Container', needed: 0, unit: 'pcs' };
+      totalNeeds[containerName].needed += quantity;
+
+      // Wick
+      const wickName = batch.wick || 'Wicks';
+      totalNeeds[wickName] = totalNeeds[wickName] || { name: wickName, category: 'Wick', needed: 0, unit: 'pcs' };
+      totalNeeds[wickName].needed += quantity;
+
+      // Fragrances
+      const totalFoOz = size * foLoad * quantity;
+      for (const comp of recipe.components || []) {
+        const ozNeeded = totalFoOz * (comp.percent / 100);
+        totalNeeds[comp.fragrance] = totalNeeds[comp.fragrance] || { name: comp.fragrance, category: 'Fragrance', needed: 0, unit: 'oz' };
+        totalNeeds[comp.fragrance].needed += ozNeeded;
+      }
+    }
+
+    // Check stock for each item
+    const shortages = [];
+    const inStock = [];
+
+    for (const item of Object.values(totalNeeds)) {
+      item.needed = Math.round(item.needed * 100) / 100;
+      let have = 0;
+
+      if (item.category === 'Wax') {
+        const mat = materials.find(m => m.name === item.name && m.category === 'Wax');
+        have = mat ? mat.qtyOnHand : materials.filter(m => m.category === 'Wax').reduce((sum, m) => sum + m.qtyOnHand, 0);
+      } else if (item.category === 'Container' || item.category === 'Wick') {
+        const mat = materials.find(m => m.name === item.name);
+        have = mat?.qtyOnHand || 0;
+      } else if (item.category === 'Fragrance') {
+        const frag = fragrances.find(f => f.name === item.name);
+        const quantities = frag?.quantities || {};
+        have = Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0);
+      }
+
+      have = Math.round(have * 100) / 100;
+      item.have = have;
+
+      if (have < item.needed) {
+        item.toOrder = Math.round((item.needed - have) * 100) / 100;
+        shortages.push(item);
+      } else {
+        inStock.push(item);
+      }
+    }
+
+    return { totalNeeds: Object.values(totalNeeds), shortages, inStock, canMakeAll: shortages.length === 0 };
+  }, [batchList, recipes, materials, fragrances]);
+
   // What can I make - calculate for all recipes
   const whatCanIMake = useMemo(() => {
     return recipes.map(recipe => {
@@ -2308,6 +2383,70 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         })}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Batch List Summary - Combined Materials */}
+                  <div style={{ marginTop: '24px', background: 'linear-gradient(135deg, rgba(254,202,87,0.1) 0%, rgba(255,159,107,0.05) 100%)', border: `2px solid ${batchListSummary.canMakeAll ? 'rgba(85,239,196,0.4)' : 'rgba(255,107,107,0.4)'}`, borderRadius: '16px', padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ClipboardList size={18} color="#feca57" />
+                        Combined Materials Summary
+                      </h4>
+                      <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '12px', background: batchListSummary.canMakeAll ? 'rgba(85,239,196,0.2)' : 'rgba(255,107,107,0.2)', color: batchListSummary.canMakeAll ? '#55efc4' : '#ff6b6b', fontWeight: 600 }}>
+                        {batchListSummary.canMakeAll ? 'All In Stock' : `${batchListSummary.shortages.length} Items to Order`}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      {/* Need to Order */}
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontSize: '11px', color: '#ff6b6b', textTransform: 'uppercase', marginBottom: '12px', fontWeight: 600 }}>Need to Order ({batchListSummary.shortages.length})</div>
+                        {batchListSummary.shortages.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', fontStyle: 'italic' }}>Everything in stock!</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                            {batchListSummary.shortages.map((item, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'rgba(255,107,107,0.1)', borderRadius: '6px', fontSize: '12px' }}>
+                                <span style={{ color: '#fce4d6', fontWeight: 500 }}>{item.name}</span>
+                                <span style={{ color: '#ff6b6b', fontSize: '11px' }}>
+                                  Order {item.toOrder} {item.unit}
+                                  <span style={{ color: 'rgba(252,228,214,0.4)', marginLeft: '4px' }}>(need {item.needed}, have {item.have})</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* In Stock */}
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontSize: '11px', color: '#55efc4', textTransform: 'uppercase', marginBottom: '12px', fontWeight: 600 }}>In Stock ({batchListSummary.inStock.length})</div>
+                        {batchListSummary.inStock.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', fontStyle: 'italic' }}>No items in stock</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                            {batchListSummary.inStock.map((item, i) => (
+                              <span key={i} style={{ padding: '6px 10px', background: 'rgba(85,239,196,0.1)', borderRadius: '6px', fontSize: '11px', color: 'rgba(252,228,214,0.8)' }}>
+                                {item.name}: {item.needed} {item.unit}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {batchListSummary.shortages.length > 0 && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,159,107,0.2)', display: 'flex', gap: '12px' }}>
+                        <button onClick={() => {
+                          // Copy shortages to clipboard
+                          const text = batchListSummary.shortages.map(item => `${item.name}: Order ${item.toOrder} ${item.unit}`).join('\n');
+                          navigator.clipboard.writeText(text);
+                          alert('Shopping list copied to clipboard!');
+                        }} style={{ ...btnSecondary, flex: 1 }}><Copy size={16} /> Copy Shortages</button>
+                        <button onClick={() => setActiveTab('shopping')} style={{ ...btnPrimary, flex: 1 }}><ShoppingCart size={16} /> View Shopping List</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
