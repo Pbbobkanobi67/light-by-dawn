@@ -2247,9 +2247,9 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> {f.vendor}</div>
-                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Size:</span> {f.packageSize} oz</div>
-                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Price:</span> {formatCurrency(f.packageCost)}</div>
-                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>$/oz:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{formatCurrency(f.packageCost / f.packageSize)}</span></div>
+                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Stock:</span> <span style={{ color: '#55efc4', fontWeight: 600 }}>{(Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0).toFixed(1)} oz</span></div>
+                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Max Load:</span> {f.maxLoad}%</div>
+                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Avg $/oz:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</span></div>
                             </div>
                           </div>
                         );
@@ -2272,10 +2272,10 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                                 <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{f.name}</h4>
                                 <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
                               </div>
-                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{f.vendor} • {f.packageSize}oz • {formatCurrency(f.packageCost)}</div>
+                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{f.vendor} • <span style={{ color: '#55efc4' }}>{(Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0).toFixed(1)} oz</span></div>
                             </div>
                             <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
-                              <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{formatCurrency(f.packageCost / f.packageSize)}/oz</div>
+                              <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}/oz</div>
                               <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Max {f.maxLoad}%</div>
                             </div>
                             <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
@@ -2296,7 +2296,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                         <thead>
                           <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
                             <th style={{ padding: '14px 16px', textAlign: 'left', width: '40px' }}></th>
-                            {['Name', 'Type', 'Vendor', 'Size', 'Cost', '$/oz', 'Max Load', ''].map(h => (
+                            {['Name', 'Type', 'Vendor', 'Stock', 'Avg $/oz', 'Max Load', ''].map(h => (
                               <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>
                             ))}
                           </tr>
@@ -2316,9 +2316,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
                                   <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
                                 </td>
                                 <td style={{ padding: '14px 16px', color: 'rgba(252,228,214,0.7)' }}>{f.vendor}</td>
-                                <td style={{ padding: '14px 16px' }}>{f.packageSize} oz</td>
-                                <td style={{ padding: '14px 16px' }}>{formatCurrency(f.packageCost)}</td>
-                                <td style={{ padding: '14px 16px', color: '#feca57', fontWeight: 600 }}>{formatCurrency(f.packageCost / f.packageSize)}</td>
+                                <td style={{ padding: '14px 16px', color: '#55efc4', fontWeight: 600 }}>{(Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0).toFixed(1)} oz</td>
+                                <td style={{ padding: '14px 16px', color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</td>
                                 <td style={{ padding: '14px 16px' }}>{f.maxLoad}%</td>
                                 <td style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
                                   <div style={{ display: 'flex', gap: '6px' }}>
