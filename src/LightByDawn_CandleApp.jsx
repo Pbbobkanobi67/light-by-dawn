@@ -181,6 +181,11 @@ export default function CandleBusinessApp() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatPosition, setChatPosition] = useState({ x: null, y: null }); // null = default position
+  const [chatSize, setChatSize] = useState({ width: 380, height: 450 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const [fragranceSort, setFragranceSort] = useState('name'); // 'name', 'type', 'vendor', 'cost', 'stock'
   const [recipeSort, setRecipeSort] = useState('name'); // 'name', 'size', 'profit', 'canMake', 'components'
@@ -1194,6 +1199,83 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
       setChatLoading(false);
     }
   };
+
+  // Chat window drag handlers
+  const handleDragStart = (e) => {
+    if (e.target.closest('button') || e.target.closest('input')) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    setDragOffset({ x: clientX - rect.left, y: clientY - rect.top });
+    setIsDragging(true);
+  };
+
+  const handleDrag = useCallback((e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const newX = Math.max(0, Math.min(window.innerWidth - chatSize.width, clientX - dragOffset.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - chatSize.height, clientY - dragOffset.y));
+    setChatPosition({ x: newX, y: newY });
+  }, [isDragging, dragOffset, chatSize]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Chat window resize handlers
+  const handleResizeStart = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+  };
+
+  const handleResize = useCallback((e) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const posX = chatPosition.x ?? (window.innerWidth - chatSize.width - 24);
+    const posY = chatPosition.y ?? (window.innerHeight - chatSize.height - 100);
+    const newWidth = Math.max(280, Math.min(600, clientX - posX));
+    const newHeight = Math.max(300, Math.min(700, clientY - posY));
+    setChatSize({ width: newWidth, height: newHeight });
+  }, [isResizing, chatPosition, chatSize]);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Global mouse/touch event listeners for drag and resize
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDrag);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDrag, { passive: false });
+      window.addEventListener('touchend', handleDragEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleDrag);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDrag);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging, handleDrag, handleDragEnd]);
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', handleResize);
+      window.addEventListener('mouseup', handleResizeEnd);
+      window.addEventListener('touchmove', handleResize, { passive: false });
+      window.addEventListener('touchend', handleResizeEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleResize);
+      window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchmove', handleResize);
+      window.removeEventListener('touchend', handleResizeEnd);
+    };
+  }, [isResizing, handleResize, handleResizeEnd]);
 
   // AI Profit Analysis
   const getProfitAnalysis = async () => {
@@ -3303,27 +3385,42 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
       {/* General AI Chat Panel */}
       {showGeneralChat && (
         <div style={{
-          position: 'fixed', bottom: '100px', right: '24px', width: '400px', maxHeight: '500px',
+          position: 'fixed',
+          left: chatPosition.x ?? 'auto',
+          top: chatPosition.y ?? 'auto',
+          right: chatPosition.x === null ? '24px' : 'auto',
+          bottom: chatPosition.y === null ? '100px' : 'auto',
+          width: window.innerWidth < 500 ? 'calc(100% - 32px)' : `${chatSize.width}px`,
+          height: `${chatSize.height}px`,
           background: 'linear-gradient(180deg, #2d1b3d 0%, #1a0a1e 100%)', borderRadius: '20px',
           border: '1px solid rgba(162,155,254,0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          display: 'flex', flexDirection: 'column', zIndex: 901, overflow: 'hidden'
+          display: 'flex', flexDirection: 'column', zIndex: 901, overflow: 'hidden',
+          userSelect: isDragging || isResizing ? 'none' : 'auto'
         }}>
-          {/* Header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(162,155,254,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Header - Draggable */}
+          <div
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
+            style={{
+              padding: '16px 20px', borderBottom: '1px solid rgba(162,155,254,0.2)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              cursor: 'move', touchAction: 'none'
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Sparkles size={20} color="#1a0a1e" />
               </div>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 600 }}>AI Assistant</h3>
-                <p style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Ask anything about your candle business</p>
+                <p style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Drag to move • Resize from corner</p>
               </div>
             </div>
             <button onClick={() => setShowGeneralChat(false)} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.5)', cursor: 'pointer' }}><X size={18} /></button>
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '250px', maxHeight: '300px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {chatMessages.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(252,228,214,0.4)' }}>
                 <Sparkles size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
@@ -3379,6 +3476,18 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.`
               <Send size={18} color="#1a0a1e" />
             </button>
           </form>
+
+          {/* Resize Handle */}
+          <div
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+            style={{
+              position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px',
+              cursor: 'se-resize', touchAction: 'none',
+              background: 'linear-gradient(135deg, transparent 50%, rgba(162,155,254,0.4) 50%)',
+              borderRadius: '0 0 20px 0'
+            }}
+          />
         </div>
       )}
     </div>
