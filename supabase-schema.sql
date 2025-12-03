@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS fragrances (
   max_load NUMERIC,
   qty_on_hand NUMERIC DEFAULT 0,
   reorder_point NUMERIC DEFAULT 0,
+  prices JSONB DEFAULT '{}',      -- Per-size pricing: { "0.5": 5.99, "1": 9.99, ... }
+  quantities JSONB DEFAULT '{}',  -- Per-size inventory: { "0.5": 2, "1": 5, ... }
+  archived BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -45,6 +48,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   size NUMERIC,
   fo_load NUMERIC,
   components JSONB DEFAULT '[]',
+  archived BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -117,3 +121,16 @@ CREATE POLICY "Allow public read" ON batch_list FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON batch_list FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON batch_list FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete" ON batch_list FOR DELETE USING (true);
+
+
+-- ============================================
+-- MIGRATION: Run this if you have existing tables
+-- ============================================
+
+-- Add new columns to fragrances table
+ALTER TABLE fragrances ADD COLUMN IF NOT EXISTS prices JSONB DEFAULT '{}';
+ALTER TABLE fragrances ADD COLUMN IF NOT EXISTS quantities JSONB DEFAULT '{}';
+ALTER TABLE fragrances ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
+
+-- Add archived column to recipes table
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
