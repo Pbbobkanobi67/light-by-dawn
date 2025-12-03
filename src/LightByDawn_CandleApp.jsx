@@ -1276,14 +1276,21 @@ Keep your response concise but helpful. Format with clear sections.` }]
     const inventoryContext = {
       materials: materials.map(m => ({
         name: m.name, category: m.category, qtyOnHand: m.qtyOnHand, unit: m.unit,
-        costPerUnit: m.packageCost / m.packageSize
+        costPerUnit: Math.round((m.packageCost / m.packageSize) * 100) / 100
       })),
       fragrances: fragrances.filter(f => !f.archived).map(f => {
-        const totalOz = Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0;
-        return { name: f.name, type: f.type, vendor: f.vendor, totalOz, maxLoad: f.maxLoad };
+        // Calculate total oz from per-size quantities only (no legacy fallback)
+        const quantities = f.quantities || {};
+        const totalOz = Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0);
+        // Include breakdown by size for better AI context
+        const stockBySize = Object.entries(quantities)
+          .filter(([_, qty]) => qty > 0)
+          .map(([sz, qty]) => `${qty}x ${sz}oz`)
+          .join(', ') || 'none';
+        return { name: f.name, type: f.type, vendor: f.vendor, totalOz: Math.round(totalOz * 10) / 10, stockBySize, maxLoad: f.maxLoad };
       }),
       recipes: recipes.filter(r => !r.archived).map(r => ({
-        name: r.name, vibe: r.vibe, size: r.size, components: r.components
+        name: r.name, vibe: r.vibe, foLoad: r.foLoad, components: r.components
       }))
     };
 
