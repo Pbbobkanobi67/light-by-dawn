@@ -538,8 +538,48 @@ export default function CandleBusinessApp() {
     return { canMake: true, reason: 'Ready to make!', maxQty: quantity };
   };
 
-  // Check if current batch has enough stock
-  const currentBatchStock = selectedRecipe ? canMakeRecipe(selectedRecipe, currentBatch.quantity) : { canMake: true, reason: '' };
+  // Check if current batch has enough stock (uses selected materials from Batch Builder)
+  const currentBatchStock = useMemo(() => {
+    if (!selectedRecipe) return { canMake: true, reason: '' };
+    const quantity = currentBatch.quantity;
+    const needs = calculateRecipeMaterials(selectedRecipe, quantity);
+
+    // Check wax - use selected wax or any wax if not selected
+    const selectedWax = currentBatch.wax ? materials.find(m => m.name === currentBatch.wax) : null;
+    const waxLbsNeeded = needs.wax / 16;
+    if (selectedWax) {
+      if (selectedWax.qtyOnHand < waxLbsNeeded) {
+        return { canMake: false, reason: `Need ${waxLbsNeeded.toFixed(2)} lbs ${selectedWax.name}, have ${selectedWax.qtyOnHand} lbs` };
+      }
+    } else {
+      const totalWax = materials.filter(m => m.category === 'Wax').reduce((sum, m) => sum + m.qtyOnHand, 0);
+      if (totalWax < waxLbsNeeded) {
+        return { canMake: false, reason: `Need ${waxLbsNeeded.toFixed(2)} lbs wax, have ${totalWax} lbs` };
+      }
+    }
+
+    // Check container - use selected container or recipe default
+    const containerName = currentBatch.container || selectedRecipe.container;
+    const container = materials.find(m => m.name === containerName);
+    if (!container || container.qtyOnHand < quantity) {
+      return { canMake: false, reason: `Need ${quantity} containers, have ${container?.qtyOnHand || 0}` };
+    }
+
+    // Check wick - use selected wick or any wick
+    const selectedWick = currentBatch.wick ? materials.find(m => m.name === currentBatch.wick) : null;
+    if (selectedWick) {
+      if (selectedWick.qtyOnHand < quantity) {
+        return { canMake: false, reason: `Need ${quantity} ${selectedWick.name}, have ${selectedWick.qtyOnHand}` };
+      }
+    } else {
+      const totalWicks = materials.filter(m => m.category === 'Wick').reduce((sum, m) => sum + m.qtyOnHand, 0);
+      if (totalWicks < quantity) {
+        return { canMake: false, reason: `Need ${quantity} wicks, have ${totalWicks}` };
+      }
+    }
+
+    return { canMake: true, reason: 'Ready to make!' };
+  }, [selectedRecipe, currentBatch, materials]);
 
   // What can I make - calculate for all recipes
   const whatCanIMake = useMemo(() => {
