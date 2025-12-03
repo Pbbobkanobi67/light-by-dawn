@@ -64,11 +64,11 @@ const initialBatchHistory = [];
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'recipes', label: 'Recipes', icon: BookOpen },
   { id: 'calculator', label: 'Batch Builder', icon: Calculator },
   { id: 'inventory', label: 'Inventory', icon: Box },
   { id: 'materials', label: 'Materials', icon: Package },
   { id: 'fragrances', label: 'Fragrances', icon: Droplets },
-  { id: 'recipes', label: 'Recipes', icon: BookOpen },
   { id: 'pricing', label: 'Pricing', icon: DollarSign },
   { id: 'shopping', label: 'Shopping List', icon: ShoppingCart },
   { id: 'history', label: 'Batch History', icon: History },
