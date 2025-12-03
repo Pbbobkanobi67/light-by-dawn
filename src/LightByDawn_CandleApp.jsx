@@ -2169,11 +2169,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '8px', textTransform: 'uppercase' }}>Set by Target Margin</div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         {[50, 60, 65, 70].map(margin => {
-                          const targetPrice = currentCalc.totalCostPerCandle / (1 - margin / 100);
+                          const targetPrice = Math.round(currentCalc.totalCostPerCandle / (1 - margin / 100) * 100) / 100;
+                          const isSelected = Math.abs(currentBatch.retailPrice - targetPrice) < 0.01;
                           return (
-                            <button key={margin} onClick={() => setCurrentBatch({ ...currentBatch, retailPrice: Math.ceil(targetPrice) })} style={{ flex: 1, padding: '8px 4px', background: currentCalc.profitMargin * 100 >= margin - 2 && currentCalc.profitMargin * 100 <= margin + 2 ? 'rgba(85,239,196,0.3)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', color: '#fce4d6', cursor: 'pointer', fontSize: '12px' }}>
+                            <button key={margin} onClick={() => setCurrentBatch({ ...currentBatch, retailPrice: targetPrice })} style={{ flex: 1, padding: '8px 4px', background: isSelected ? 'rgba(85,239,196,0.3)' : 'rgba(0,0,0,0.3)', border: `1px solid ${isSelected ? 'rgba(85,239,196,0.6)' : 'rgba(85,239,196,0.3)'}`, borderRadius: '8px', color: isSelected ? '#55efc4' : '#fce4d6', cursor: 'pointer', fontSize: '12px' }}>
                               <div style={{ fontWeight: 600 }}>{margin}%</div>
-                              <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>{formatCurrency(targetPrice)}</div>
+                              <div style={{ fontSize: '10px', color: isSelected ? '#55efc4' : 'rgba(252,228,214,0.5)' }}>{formatCurrency(targetPrice)}</div>
                             </button>
                           );
                         })}
