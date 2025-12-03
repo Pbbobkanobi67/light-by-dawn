@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -165,6 +165,8 @@ export default function CandleBusinessApp() {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFragranceModal, setShowFragranceModal] = useState(false);
+  const [showBatchInstructionsModal, setShowBatchInstructionsModal] = useState(false);
+  const [batchInstructions, setBatchInstructions] = useState(null);
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [editingFragrance, setEditingFragrance] = useState(null);
@@ -187,7 +189,7 @@ export default function CandleBusinessApp() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || 'AIzaSyBpTrANmbEIHtBWvrOuKI_V85PdyDSqI3U');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [chatPosition, setChatPosition] = useState({ x: null, y: null }); // null = default position
   const [chatSize, setChatSize] = useState({ width: 380, height: 450 });
@@ -2388,12 +2390,19 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <td style={{ padding: '14px 16px' }}>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                   <button onClick={() => {
+                                    // Open batch instructions modal
+                                    const recipe = recipes.find(r => r.name === b.recipe);
+                                    const calc = calculateBatch(b);
+                                    setBatchInstructions({ ...b, recipe: recipe, calc });
+                                    setShowBatchInstructionsModal(true);
+                                  }} style={{ background: 'rgba(85,239,196,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#55efc4', cursor: 'pointer' }} title="Print Instructions"><Printer size={14} /></button>
+                                  <button onClick={() => {
                                     // Load batch into currentBatch for editing
                                     setCurrentBatch({ ...b });
                                     // Scroll to top of batch details
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
-                                  <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                  }} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#feca57', cursor: 'pointer' }} title="Edit"><Edit2 size={14} /></button>
+                                  <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }} title="Delete"><Trash2 size={14} /></button>
                                 </div>
                               </td>
                             </tr>
@@ -3961,6 +3970,194 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,107,107,0.2)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowClearConfirm(false)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
               <button onClick={confirmClearShoppingList} style={{ padding: '12px 24px', background: 'rgba(255,107,107,0.3)', border: '1px solid rgba(255,107,107,0.5)', borderRadius: '10px', color: '#ff6b6b', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}><Trash2 size={16} /> Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Instructions Modal */}
+      {showBatchInstructionsModal && batchInstructions && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div id="batch-instructions-content" style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflow: 'auto', color: '#1a0a1e' }}>
+            {/* Header */}
+            <div style={{ padding: '24px', borderBottom: '2px solid #1a0a1e', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '4px' }}>Batch Instructions</h1>
+                <p style={{ color: '#666', fontSize: '14px' }}>Light By Dawn • {new Date().toLocaleDateString()}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => {
+                  const content = document.getElementById('batch-instructions-content');
+                  const printWindow = window.open('', '_blank');
+                  printWindow.document.write(`
+                    <html><head><title>Batch Instructions - ${batchInstructions.recipe?.name || batchInstructions.recipeName}</title>
+                    <style>
+                      body { font-family: Arial, sans-serif; padding: 20px; color: #1a0a1e; }
+                      h1 { font-size: 24px; margin-bottom: 4px; }
+                      h2 { font-size: 18px; margin: 20px 0 10px; border-bottom: 2px solid #1a0a1e; padding-bottom: 4px; }
+                      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                      .box { border: 1px solid #ddd; padding: 12px; border-radius: 8px; }
+                      .label { font-size: 11px; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+                      .value { font-size: 16px; font-weight: 600; }
+                      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                      th { background: #f5f5f5; font-size: 12px; text-transform: uppercase; }
+                      .checkbox { width: 16px; height: 16px; border: 2px solid #1a0a1e; display: inline-block; margin-right: 8px; }
+                      .notes { border: 1px solid #ddd; min-height: 100px; margin-top: 8px; padding: 12px; }
+                      @media print { body { padding: 0; } }
+                    </style>
+                    </head><body>${content.innerHTML}</body></html>
+                  `);
+                  printWindow.document.close();
+                  printWindow.print();
+                }} style={{ padding: '8px 16px', background: '#1a0a1e', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}><Printer size={16} /> Print</button>
+                <button onClick={() => setShowBatchInstructionsModal(false)} style={{ padding: '8px', background: '#eee', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+            </div>
+
+            {/* Recipe Info */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{batchInstructions.recipe?.name || batchInstructions.recipeName || 'Recipe'}</h2>
+              <p style={{ color: '#666', fontSize: '14px', marginBottom: '12px' }}>{batchInstructions.recipe?.vibe || ''} {batchInstructions.recipe?.description ? `• ${batchInstructions.recipe.description}` : ''}</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                <div style={{ background: '#f8f8f8', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Quantity</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700 }}>{batchInstructions.quantity}</div>
+                </div>
+                <div style={{ background: '#f8f8f8', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Size</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700 }}>{batchInstructions.size} oz</div>
+                </div>
+                <div style={{ background: '#f8f8f8', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>FO Load</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700 }}>{(batchInstructions.foLoad * 100).toFixed(0)}%</div>
+                </div>
+                <div style={{ background: '#f8f8f8', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Cost/Each</div>
+                  <div style={{ fontSize: '24px', fontWeight: 700 }}>{formatCurrency(batchInstructions.calc?.totalCostPerCandle || 0)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Materials */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #1a0a1e', paddingBottom: '4px' }}>Materials Needed</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Wax</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>{batchInstructions.wax || 'Not specified'}</div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.calc?.totalWaxBatch?.toFixed(1) || 0} oz ({(batchInstructions.calc?.totalWaxBatch / 16)?.toFixed(2) || 0} lbs)</div>
+                </div>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Container</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>{batchInstructions.container || 'Not specified'}</div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.quantity} units</div>
+                </div>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Wick</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>{batchInstructions.wick || 'Not specified'}</div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.quantity} units</div>
+                </div>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Label</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>{batchInstructions.label === 'standard-vinyl' ? 'Standard Vinyl' : batchInstructions.label || 'None'}</div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.quantity} units</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fragrance Breakdown */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #1a0a1e', paddingBottom: '4px' }}>Fragrance Breakdown</h2>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>Total Fragrance: <strong>{batchInstructions.calc?.totalFoBatch?.toFixed(2) || 0} oz</strong></div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f5f5f5' }}>
+                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase' }}>Fragrance</th>
+                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center', fontSize: '12px', textTransform: 'uppercase' }}>%</th>
+                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontSize: '12px', textTransform: 'uppercase' }}>Amount (oz)</th>
+                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center', fontSize: '12px', textTransform: 'uppercase', width: '40px' }}>✓</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(batchInstructions.recipe?.components || []).map((comp, i) => {
+                    const totalFo = batchInstructions.size * batchInstructions.foLoad * batchInstructions.quantity;
+                    const compOz = totalFo * (comp.percent / 100);
+                    return (
+                      <tr key={i}>
+                        <td style={{ border: '1px solid #ddd', padding: '10px', fontWeight: 500 }}>{comp.fragrance}</td>
+                        <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}>{comp.percent}%</td>
+                        <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontWeight: 600 }}>{compOz.toFixed(2)} oz</td>
+                        <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}><span style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid #1a0a1e' }}></span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Production Checklist */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #1a0a1e', paddingBottom: '4px' }}>Production Checklist</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  'Measure and melt wax to 180-185°F',
+                  'Prepare containers: clean, center wicks',
+                  'Measure fragrance oils (see breakdown above)',
+                  'Add fragrance at 135-145°F, stir 2 minutes',
+                  `Pour at ___°F (recommended: 135°F)`,
+                  'Allow to cool undisturbed',
+                  `Cure for 1-2 weeks before testing`,
+                  'Apply labels and package'
+                ].map((step, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: '#f8f8f8', borderRadius: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '18px', height: '18px', border: '2px solid #1a0a1e', borderRadius: '3px', flexShrink: 0 }}></span>
+                    <span style={{ fontSize: '14px' }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #1a0a1e', paddingBottom: '4px' }}>Batch Notes</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Pour Date</div>
+                  <div style={{ borderBottom: '1px solid #ccc', minHeight: '24px', marginTop: '4px' }}></div>
+                </div>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Pour Temp</div>
+                  <div style={{ borderBottom: '1px solid #ccc', minHeight: '24px', marginTop: '4px' }}></div>
+                </div>
+                <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Cure Until</div>
+                  <div style={{ borderBottom: '1px solid #ccc', minHeight: '24px', marginTop: '4px' }}></div>
+                </div>
+              </div>
+              <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '8px' }}>Notes / Observations</div>
+                <div style={{ minHeight: '80px', borderBottom: '1px solid #eee' }}></div>
+                <div style={{ minHeight: '30px', borderBottom: '1px solid #eee' }}></div>
+                <div style={{ minHeight: '30px' }}></div>
+              </div>
+            </div>
+
+            {/* Cost Summary */}
+            <div style={{ padding: '20px 24px', background: '#f8f8f8' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                <span>Cost per Candle:</span>
+                <strong>{formatCurrency(batchInstructions.calc?.totalCostPerCandle || 0)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                <span>Total Batch Cost:</span>
+                <strong>{formatCurrency(batchInstructions.calc?.totalBatchCost || 0)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, paddingTop: '8px', borderTop: '2px solid #1a0a1e' }}>
+                <span>Retail Value ({batchInstructions.quantity} × {formatCurrency(batchInstructions.retailPrice || 0)}):</span>
+                <span>{formatCurrency((batchInstructions.quantity || 0) * (batchInstructions.retailPrice || 0))}</span>
+              </div>
             </div>
           </div>
         </div>
