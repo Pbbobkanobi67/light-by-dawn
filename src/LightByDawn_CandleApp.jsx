@@ -398,8 +398,22 @@ export default function CandleBusinessApp() {
     };
   };
 
-  const currentCalc = calculateBatch(currentBatch);
   const selectedRecipe = recipes.find(r => r.name === currentBatch.recipe);
+
+  // Auto-calculate avgFoCost from recipe components
+  const calculatedAvgFoCost = useMemo(() => {
+    if (!selectedRecipe?.components?.length) return 1.97; // default fallback
+    const costs = selectedRecipe.components.map(c => {
+      const frag = fragrances.find(f => f.name === c.fragrance);
+      const pricePerOz = frag?.prices?.['16'] ? frag.prices['16'] / 16 : 1.97;
+      return pricePerOz * (c.percent / 100);
+    });
+    return Math.round(costs.reduce((sum, c) => sum + c, 0) * 100) / 100;
+  }, [selectedRecipe, fragrances]);
+
+  // Use calculated avgFoCost if not manually set
+  const effectiveAvgFoCost = currentBatch.avgFoCost > 0 ? currentBatch.avgFoCost : calculatedAvgFoCost;
+  const currentCalc = calculateBatch({ ...currentBatch, avgFoCost: effectiveAvgFoCost });
 
   // Pricing engine calculation based on selected recipe
   const pricingCalc = useMemo(() => {
