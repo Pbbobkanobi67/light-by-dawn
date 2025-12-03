@@ -256,31 +256,44 @@ export default function CandleBusinessApp() {
   // Persist active tab to localStorage
   useEffect(() => { saveToStorage('activeTab', activeTab); }, [activeTab]);
 
-  // Persist data to localStorage and Supabase
+  // Track if initial load is complete (prevents syncing stale data on hot reload)
+  const initialLoadRef = React.useRef(false);
+
+  // Mark initial load complete after a delay (ensures Supabase data is in state)
+  useEffect(() => {
+    if (dataLoaded && !initialLoadRef.current) {
+      const timer = setTimeout(() => {
+        initialLoadRef.current = true;
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [dataLoaded]);
+
+  // Persist data to localStorage and Supabase (only after initial load)
   useEffect(() => {
     saveToStorage('materials', materials);
-    if (dataLoaded) syncToSupabase('materials', materials);
-  }, [materials, dataLoaded, syncToSupabase]);
+    if (initialLoadRef.current) syncToSupabase('materials', materials);
+  }, [materials, syncToSupabase]);
 
   useEffect(() => {
     saveToStorage('fragrances', fragrances);
-    if (dataLoaded) syncToSupabase('fragrances', fragrances);
-  }, [fragrances, dataLoaded, syncToSupabase]);
+    if (initialLoadRef.current) syncToSupabase('fragrances', fragrances);
+  }, [fragrances, syncToSupabase]);
 
   useEffect(() => {
     saveToStorage('recipes', recipes);
-    if (dataLoaded) syncToSupabase('recipes', recipes);
-  }, [recipes, dataLoaded, syncToSupabase]);
+    if (initialLoadRef.current) syncToSupabase('recipes', recipes);
+  }, [recipes, syncToSupabase]);
 
   useEffect(() => {
     saveToStorage('batchHistory', batchHistory);
-    if (dataLoaded) syncToSupabase('batch_history', batchHistory);
-  }, [batchHistory, dataLoaded, syncToSupabase]);
+    if (initialLoadRef.current) syncToSupabase('batch_history', batchHistory);
+  }, [batchHistory, syncToSupabase]);
 
   useEffect(() => {
     saveToStorage('batchList', batchList);
-    if (dataLoaded) syncToSupabase('batch_list', batchList);
-  }, [batchList, dataLoaded, syncToSupabase]);
+    if (initialLoadRef.current) syncToSupabase('batch_list', batchList);
+  }, [batchList, syncToSupabase]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
