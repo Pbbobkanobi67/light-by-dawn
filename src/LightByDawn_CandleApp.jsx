@@ -2012,10 +2012,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <button onClick={resetCurrentBatch} style={btnSecondary}><RotateCcw size={16} /> Reset</button>
                   <button onClick={openLogBatchModal} style={{ ...btnSecondary, color: '#55efc4', borderColor: 'rgba(85,239,196,0.3)' }}><ClipboardList size={16} /> Log Batch</button>
                   {batchList.some(b => b.id === currentBatch.id) ? (
-                    <button onClick={() => {
-                      setBatchList(prev => prev.map(b => b.id === currentBatch.id ? { ...currentBatch } : b));
-                      setCurrentBatch({ ...currentBatch, id: `BATCH-${Date.now()}` }); // Reset ID for new batch
-                    }} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #55efc4 0%, #00b894 100%)' }}><Check size={18} /> Update Batch</button>
+                    <>
+                      <button onClick={() => {
+                        setBatchList(prev => prev.map(b => b.id === currentBatch.id ? { ...currentBatch } : b));
+                        setCurrentBatch({ ...currentBatch, id: `BATCH-${Date.now()}` }); // Reset ID for new batch
+                      }} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #55efc4 0%, #00b894 100%)' }}><Save size={18} /> Save Changes</button>
+                      <button onClick={() => setCurrentBatch({ ...currentBatch, id: `BATCH-${Date.now()}` })} style={btnSecondary}><X size={16} /> Cancel Edit</button>
+                    </>
                   ) : (
                     <button onClick={addBatchToList} style={btnPrimary}><Plus size={18} /> Add to List</button>
                   )}
