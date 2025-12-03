@@ -2200,11 +2200,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
                           <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
                             <div style={{ color: 'rgba(252,228,214,0.5)' }}>Wholesale (10+)</div>
-                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.45)}</div>
+                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.50)}</div>
+                            <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>50% margin</div>
                           </div>
                           <div style={{ padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
                             <div style={{ color: 'rgba(252,228,214,0.5)' }}>Bulk (50+)</div>
-                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.35)}</div>
+                            <div style={{ fontWeight: 600 }}>{formatCurrency(currentCalc.totalCostPerCandle / 0.65)}</div>
+                            <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>35% margin</div>
                           </div>
                         </div>
                       </div>
