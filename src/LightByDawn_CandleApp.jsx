@@ -1606,7 +1606,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   { label: 'Candles Made', value: stats.totalCandles, icon: Flame, color: '#feca57' },
                   { label: 'Investment', value: formatCurrency(stats.totalInvestment), icon: DollarSign, color: '#ff9ff3' },
                   { label: 'Materials Value', value: formatCurrency(materials.reduce((sum, m) => sum + (m.packageCost / m.packageSize * m.qtyOnHand), 0)), icon: Package, color: '#feca57' },
-                  { label: 'Fragrance Value', value: formatCurrency(fragrances.reduce((sum, f) => sum + (f.packageCost / f.packageSize * (f.qtyOnHand || 0)), 0)), icon: Droplets, color: '#74b9ff' },
+                  { label: 'Fragrance Value', value: formatCurrency(fragrances.reduce((sum, f) => { const value = Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0); if (value === 0) { const totalOz = Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0; return sum + (f.packageCost && f.packageSize ? (f.packageCost / f.packageSize * totalOz) : 0); } return sum + value; }, 0)), icon: Droplets, color: '#74b9ff' },
                   { label: 'Low Stock', value: lowStockItems.length, icon: AlertTriangle, color: lowStockItems.length > 0 ? '#ff6b6b' : '#55efc4' },
                   { label: 'Recipes Ready', value: `${whatCanIMake.filter(w => w.maxQty >= 12).length} / ${recipes.length}`, icon: CheckCircle, color: '#55efc4' },
                   { label: 'Pending', value: `${stats.pendingBatches} batches`, icon: ShoppingCart, color: '#a29bfe' },
@@ -1989,7 +1989,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Total Fragrance Value</div>
-                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + (f.packageCost / f.packageSize * (f.qtyOnHand || 0)), 0))}</div>
+                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => { const value = Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0); if (value === 0) { const totalOz = Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0) || f.qtyOnHand || 0; return sum + (f.packageCost && f.packageSize ? (f.packageCost / f.packageSize * totalOz) : 0); } return sum + value; }, 0))}</div>
                 </div>
                 <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Low Stock Items</div>
