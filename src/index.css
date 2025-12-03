@@ -13,3 +13,41 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Dark themed dropdown menus */
+select {
+  background-color: #1a0a1e !important;
+  color: #fce4d6 !important;
+  cursor: pointer;
+}
+
+select option {
+  background-color: #2d1633;
+  color: #fce4d6;
+  padding: 8px 12px;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #4a2255;
+  color: #feca57;
+}
+
+/* Scrollbar styling for dark theme */
+select::-webkit-scrollbar {
+  width: 8px;
+}
+
+select::-webkit-scrollbar-track {
+  background: #1a0a1e;
+}
+
+select::-webkit-scrollbar-thumb {
+  background: rgba(255, 159, 107, 0.3);
+  border-radius: 4px;
+}
+
+select::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 159, 107, 0.5);
+}
