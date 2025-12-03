@@ -1975,7 +1975,18 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           </div>
                           <div>
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Container</label>
-                            <select value={currentBatch.container} onChange={e => { const m = materials.find(mat => mat.name === e.target.value); setCurrentBatch({ ...currentBatch, container: e.target.value, containerCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0 }); }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
+                            <select value={currentBatch.container} onChange={e => {
+                              const m = materials.find(mat => mat.name === e.target.value);
+                              // Auto-detect size from container name (e.g., "9oz Jar" -> 9)
+                              const sizeMatch = e.target.value.match(/(\d+(?:\.\d+)?)\s*oz/i);
+                              const detectedSize = sizeMatch ? parseFloat(sizeMatch[1]) : currentBatch.size;
+                              setCurrentBatch({
+                                ...currentBatch,
+                                container: e.target.value,
+                                containerCost: m ? Math.round(m.packageCost / m.packageSize * 100) / 100 : 0,
+                                size: detectedSize
+                              });
+                            }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select container...</option>
                               {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
@@ -2070,6 +2081,39 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       <div>
                         <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Fragrance Load: {(currentBatch.foLoad * 100).toFixed(0)}%</label>
                         <input type="range" min="0.04" max="0.12" step="0.01" value={currentBatch.foLoad} onChange={e => setCurrentBatch({ ...currentBatch, foLoad: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: '#feca57' }} />
+                      </div>
+
+                      {/* Fill Breakdown - Gross vs Net */}
+                      <div style={{ background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Fill Breakdown (per candle)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                          <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>GROSS (Total)</div>
+                            <div style={{ fontWeight: 600, color: '#feca57' }}>{currentBatch.size} oz</div>
+                          </div>
+                          <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>NET (Wax)</div>
+                            <div style={{ fontWeight: 600 }}>{(currentBatch.size * (1 - currentBatch.foLoad)).toFixed(2)} oz</div>
+                          </div>
+                          <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
+                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>Fragrance</div>
+                            <div style={{ fontWeight: 600, color: '#ff9ff3' }}>{(currentBatch.size * currentBatch.foLoad).toFixed(2)} oz</div>
+                          </div>
+                        </div>
+                        {/* Container size mismatch warning */}
+                        {currentBatch.container && (() => {
+                          const containerSizeMatch = currentBatch.container.match(/(\d+(?:\.\d+)?)\s*oz/i);
+                          const containerSize = containerSizeMatch ? parseFloat(containerSizeMatch[1]) : null;
+                          if (containerSize && Math.abs(containerSize - currentBatch.size) > 0.5) {
+                            return (
+                              <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,107,107,0.15)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#ff6b6b' }}>
+                                <AlertTriangle size={14} />
+                                Container is {containerSize}oz but size is set to {currentBatch.size}oz
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
 
                       <div>
