@@ -214,6 +214,7 @@ export default function CandleBusinessApp() {
   const [instructionsAiLoading, setInstructionsAiLoading] = useState(false);
   const [instructionsAiPrompt, setInstructionsAiPrompt] = useState('');
   const [instructionsAiResponse, setInstructionsAiResponse] = useState(null);
+  const [instructionsConversation, setInstructionsConversation] = useState([]); // Full conversation history
   const [viewingInstruction, setViewingInstruction] = useState(null);
   const [converterValue, setConverterValue] = useState('');
   const [converterUnit, setConverterUnit] = useState('oz'); // 'oz', 'ml', 'g'
@@ -1462,17 +1463,24 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
     }
   };
 
-  // AI Batch Instructions Generator
+  // AI Batch Instructions Generator (with conversation history)
   const generateBatchInstructions = async (prompt) => {
     if (!prompt.trim() || instructionsAiLoading) return;
 
     if (!geminiApiKey) {
-      setInstructionsAiResponse({ error: "Please set your Google Gemini API key first. Go to the Chat panel and click the key icon." });
+      setInstructionsConversation(prev => [...prev,
+        { role: 'user', content: prompt },
+        { role: 'model', content: "Please set your Google Gemini API key first. Go to the Chat panel and click the key icon." }
+      ]);
+      setInstructionsAiPrompt('');
       return;
     }
 
+    // Add user message to conversation
+    const userMessage = { role: 'user', content: prompt };
+    setInstructionsConversation(prev => [...prev, userMessage]);
+    setInstructionsAiPrompt('');
     setInstructionsAiLoading(true);
-    setInstructionsAiResponse(null);
 
     // Build inventory context for AI
     const inventoryContext = {
@@ -1492,47 +1500,26 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
       }))
     };
 
-    const systemPrompt = `You are a master candle maker assistant for "Light By Dawn" candle business. The user will ask you how to make a batch of candles. Your job is to provide detailed, practical instructions.
+    const systemPrompt = `You are a master candle maker assistant for "Light By Dawn" candle business. You help with candle making questions, batch instructions, troubleshooting, and general candle business advice.
 
 You have access to their inventory and recipes:
 ${JSON.stringify(inventoryContext, null, 2)}
 
-When the user asks about making candles, you MUST respond with a JSON object in this EXACT format (no markdown, just pure JSON):
-{
-  "title": "Batch instruction title (e.g., '12 Coastal Luxe 9oz Candles')",
-  "recipeName": "Name of the recipe if applicable",
-  "recipeVibe": "The vibe/style description",
-  "quantity": 12,
-  "size": 9,
-  "foLoad": 10,
-  "ingredients": [
-    { "item": "Golden Brands 464 Soy Wax", "amount": "6.8 lbs", "amountOz": 108.0, "amountMl": 3195, "amountGrams": 3062, "notes": "Main wax base" }
-  ],
-  "fragranceBreakdown": [
-    { "name": "Ocean Breeze", "percent": 55, "amountOz": 5.94, "amountMl": 176, "amountGrams": 168 }
-  ],
-  "supplies": [
-    { "item": "9oz Straight Side Jar", "quantity": 12, "notes": "Clean and pre-heat" },
-    { "item": "CD-18 Wicks", "quantity": 12, "notes": "Pre-tab wicks" }
-  ],
-  "steps": [
-    { "step": 1, "title": "Prepare Workspace", "description": "Set up your pouring station with all materials within reach. Ensure containers are clean and at room temperature.", "tips": ["Work in a well-ventilated area", "Cover surfaces to protect from spills"], "duration": "10 minutes" },
-    { "step": 2, "title": "Melt Wax", "description": "Add wax to double boiler and heat to 180-185°F.", "tips": ["Use a thermometer", "Stir occasionally"], "duration": "20-30 minutes" }
-  ],
-  "temperatures": {
-    "meltTemp": "180-185°F",
-    "addFragrance": "135-145°F",
-    "pourTemp": "130-140°F"
-  },
-  "cureTime": "1-2 weeks",
-  "estimatedTime": "1.5-2 hours active, plus cooling",
-  "warnings": ["Never leave melting wax unattended", "Keep water away from hot wax"],
-  "proTips": ["Pre-heat jars slightly for better adhesion", "Pour slowly to minimize air bubbles"]
-}
+RESPONSE FORMAT:
+- For batch instruction requests (e.g., "How do I make 12 candles"), respond with a JSON object containing: title, recipeName, recipeVibe, quantity, size, foLoad, ingredients (with amountOz, amountMl, amountGrams), fragranceBreakdown, supplies, steps (with tips), temperatures, cureTime, estimatedTime, warnings, proTips
+- For follow-up questions, modifications, or general questions, respond in plain conversational text
+- Be helpful, friendly, and knowledgeable about candle making
 
-Calculate all amounts precisely based on the batch size. Provide measurements in oz, ml, and grams for flexibility.
-If the user asks about a recipe you don't have, create custom instructions based on best practices.
-Always include safety warnings and pro tips from your expertise.`;
+When providing JSON batch instructions, use this format (no markdown, pure JSON):
+{"title": "...", "quantity": 12, "size": 9, "foLoad": 10, "ingredients": [...], "fragranceBreakdown": [...], "supplies": [...], "steps": [...], "temperatures": {...}, "cureTime": "...", "warnings": [...], "proTips": [...]}
+
+Calculate all amounts precisely. Provide measurements in oz, ml, and grams for flexibility.`;
+
+    // Build conversation history for Gemini
+    const conversationHistory = instructionsConversation.map(m => ({
+      role: m.role === 'model' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
 
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
@@ -1540,7 +1527,7 @@ Always include safety warnings and pro tips from your expertise.`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: prompt }] }]
+          contents: [...conversationHistory, { role: "user", parts: [{ text: prompt }] }]
         })
       });
 
@@ -1552,22 +1539,40 @@ Always include safety warnings and pro tips from your expertise.`;
       const data = await response.json();
       let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-      // Clean up response - remove markdown code blocks if present
-      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Try to parse as JSON for structured batch instructions
+      let cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let parsedData = null;
 
       try {
-        const parsed = JSON.parse(responseText);
-        setInstructionsAiResponse({ success: true, data: parsed, rawPrompt: prompt });
+        parsedData = JSON.parse(cleanedText);
       } catch (parseError) {
-        // If JSON parsing fails, store as text
-        setInstructionsAiResponse({ success: true, text: responseText, rawPrompt: prompt });
+        // Not JSON, treat as conversational text
+      }
+
+      // Add AI response to conversation
+      const aiMessage = {
+        role: 'model',
+        content: responseText,
+        data: parsedData // Will be null for text responses
+      };
+      setInstructionsConversation(prev => [...prev, aiMessage]);
+
+      // Also set the latest structured response for the save button
+      if (parsedData) {
+        setInstructionsAiResponse({ success: true, data: parsedData, rawPrompt: prompt });
       }
     } catch (error) {
       console.error("Instructions AI error:", error);
-      setInstructionsAiResponse({ error: error.message });
+      setInstructionsConversation(prev => [...prev, { role: 'model', content: `Error: ${error.message}` }]);
     } finally {
       setInstructionsAiLoading(false);
     }
+  };
+
+  // Clear conversation and start fresh
+  const clearInstructionsConversation = () => {
+    setInstructionsConversation([]);
+    setInstructionsAiResponse(null);
   };
 
   // Save AI-generated instructions
@@ -2674,274 +2679,167 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
                 {/* Main Content Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {/* AI Prompt Section */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                      <Sparkles size={20} color="#a29bfe" />
-                      <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Ask AI for Instructions</h3>
-                    </div>
-                    <p style={{ color: 'rgba(252,228,214,0.6)', fontSize: '14px', marginBottom: '16px' }}>
-                      Ask how to make a batch of candles. The AI knows your recipes and inventory!
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <input
-                        type="text"
-                        value={instructionsAiPrompt}
-                        onChange={(e) => setInstructionsAiPrompt(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && generateBatchInstructions(instructionsAiPrompt)}
-                        placeholder="e.g., How do I make 12 Coastal Luxe 9oz candles?"
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                      <button
-                        onClick={() => generateBatchInstructions(instructionsAiPrompt)}
-                        disabled={instructionsAiLoading || !instructionsAiPrompt.trim()}
-                        style={{ ...btnPrimary, opacity: instructionsAiLoading || !instructionsAiPrompt.trim() ? 0.5 : 1 }}
-                      >
-                        {instructionsAiLoading ? <><RotateCcw size={18} style={{ animation: 'spin 1s linear infinite' }} /><style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style></> : <Send size={18} />}
-                        {instructionsAiLoading ? 'Generating...' : 'Generate'}
-                      </button>
-                    </div>
-                    {/* Quick prompts */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                      {recipes.filter(r => !r.archived).slice(0, 4).map(r => (
-                        <button
-                          key={r.id}
-                          onClick={() => setInstructionsAiPrompt(`How do I make 12 ${r.name} ${r.size}oz candles?`)}
-                          style={{ padding: '6px 12px', background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '20px', color: '#a29bfe', fontSize: '12px', cursor: 'pointer' }}
-                        >
-                          {r.name}
+                  {/* AI Conversation Section */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '500px', maxHeight: '70vh' }}>
+                    {/* Header */}
+                    <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Sparkles size={20} color="#a29bfe" />
+                        <h3 style={{ fontSize: '16px', fontWeight: 600 }}>AI Candle Making Assistant</h3>
+                      </div>
+                      {instructionsConversation.length > 0 && (
+                        <button onClick={clearInstructionsConversation} style={{ ...btnSecondary, padding: '6px 12px', fontSize: '12px' }}>
+                          <RotateCcw size={14} /> New Chat
                         </button>
-                      ))}
+                      )}
+                    </div>
+
+                    {/* Conversation Area */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {instructionsConversation.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(252,228,214,0.5)' }}>
+                          <MessageSquare size={40} style={{ marginBottom: '12px', opacity: 0.4 }} />
+                          <p style={{ fontSize: '14px', marginBottom: '8px' }}>Ask me how to make candles!</p>
+                          <p style={{ fontSize: '12px' }}>I know your recipes, inventory, and candle-making best practices.</p>
+                          {/* Quick prompts */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '20px', justifyContent: 'center' }}>
+                            {recipes.filter(r => !r.archived).slice(0, 4).map(r => (
+                              <button
+                                key={r.id}
+                                onClick={() => setInstructionsAiPrompt(`How do I make 12 ${r.name} ${r.size}oz candles?`)}
+                                style={{ padding: '8px 14px', background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '20px', color: '#a29bfe', fontSize: '12px', cursor: 'pointer' }}
+                              >
+                                {r.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        instructionsConversation.map((msg, i) => (
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                            {msg.role === 'user' ? (
+                              <div style={{ background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', padding: '12px 16px', borderRadius: '16px 16px 4px 16px', maxWidth: '85%', color: '#1a0a1e', fontWeight: 500 }}>
+                                {msg.content}
+                              </div>
+                            ) : msg.data ? (
+                              // Structured batch instructions
+                              <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '16px', maxWidth: '100%', overflow: 'hidden' }}>
+                                <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <h4 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '2px' }}>{msg.data.title}</h4>
+                                    {msg.data.recipeVibe && <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{msg.data.recipeVibe}</p>}
+                                  </div>
+                                  <button onClick={() => saveInstructions({ data: msg.data, rawPrompt: '' }, msg.data.title)} style={{ ...btnPrimary, padding: '6px 12px', fontSize: '12px' }}>
+                                    <Save size={14} /> Save
+                                  </button>
+                                </div>
+                                <div style={{ padding: '16px 20px' }}>
+                                  {/* Quick Stats */}
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Qty</div>
+                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.quantity}</div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Size</div>
+                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.size}oz</div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>FO</div>
+                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.foLoad}%</div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Cure</div>
+                                      <div style={{ fontSize: '12px', fontWeight: 600 }}>{msg.data.cureTime}</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Ingredients summary */}
+                                  {msg.data.ingredients && (
+                                    <div style={{ marginBottom: '12px' }}>
+                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#feca57' }}>Ingredients:</div>
+                                      {msg.data.ingredients.map((ing, j) => (
+                                        <div key={j} style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', marginBottom: '2px' }}>
+                                          • {ing.item}: {ing.amount} ({ing.amountMl}ml / {ing.amountGrams}g)
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Fragrance breakdown */}
+                                  {msg.data.fragranceBreakdown && msg.data.fragranceBreakdown.length > 0 && (
+                                    <div style={{ marginBottom: '12px' }}>
+                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#ff9ff3' }}>Fragrance Blend:</div>
+                                      {msg.data.fragranceBreakdown.map((f, j) => (
+                                        <div key={j} style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', marginBottom: '2px' }}>
+                                          • {f.name}: {f.percent}% = {f.amountOz}oz ({f.amountMl}ml)
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Temperature Guide */}
+                                  {msg.data.temperatures && (
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(255,107,107,0.15)', borderRadius: '4px', color: '#ff6b6b' }}>Melt: {msg.data.temperatures.meltTemp}</span>
+                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(254,202,87,0.15)', borderRadius: '4px', color: '#feca57' }}>Add FO: {msg.data.temperatures.addFragrance}</span>
+                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(85,239,196,0.15)', borderRadius: '4px', color: '#55efc4' }}>Pour: {msg.data.temperatures.pourTemp}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Steps preview */}
+                                  {msg.data.steps && (
+                                    <div>
+                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#a29bfe' }}>Steps ({msg.data.steps.length}):</div>
+                                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.7)' }}>
+                                        {msg.data.steps.slice(0, 3).map((s, j) => (
+                                          <div key={j} style={{ marginBottom: '2px' }}>{s.step}. {s.title}</div>
+                                        ))}
+                                        {msg.data.steps.length > 3 && <div style={{ color: 'rgba(252,228,214,0.5)' }}>...and {msg.data.steps.length - 3} more steps</div>}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              // Text response
+                              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '16px 16px 16px 4px', maxWidth: '85%', whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.5' }}>
+                                {msg.content}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                      {instructionsAiLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(252,228,214,0.5)' }}>
+                          <RotateCcw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                          <span style={{ fontSize: '13px' }}>Thinking...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input Area */}
+                    <div style={{ padding: '16px', borderTop: '1px solid rgba(255,159,107,0.15)', background: 'rgba(0,0,0,0.2)' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <input
+                          type="text"
+                          value={instructionsAiPrompt}
+                          onChange={(e) => setInstructionsAiPrompt(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && generateBatchInstructions(instructionsAiPrompt)}
+                          placeholder={instructionsConversation.length === 0 ? "How do I make 12 Coastal Luxe candles?" : "Ask a follow-up question..."}
+                          style={{ ...inputStyle, flex: 1 }}
+                        />
+                        <button
+                          onClick={() => generateBatchInstructions(instructionsAiPrompt)}
+                          disabled={instructionsAiLoading || !instructionsAiPrompt.trim()}
+                          style={{ ...btnPrimary, opacity: instructionsAiLoading || !instructionsAiPrompt.trim() ? 0.5 : 1 }}
+                        >
+                          <Send size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* AI Response */}
-                  {instructionsAiResponse && (
-                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
-                      {instructionsAiResponse.error ? (
-                        <div style={{ padding: '24px', color: '#ff6b6b' }}>
-                          <AlertTriangle size={20} style={{ marginRight: '8px' }} />
-                          {instructionsAiResponse.error}
-                        </div>
-                      ) : instructionsAiResponse.data ? (
-                        <>
-                          {/* Header with save button */}
-                          <div style={{ padding: '20px 24px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{instructionsAiResponse.data.title}</h3>
-                              {instructionsAiResponse.data.recipeVibe && <p style={{ color: 'rgba(252,228,214,0.6)', fontSize: '14px' }}>{instructionsAiResponse.data.recipeVibe}</p>}
-                            </div>
-                            <button
-                              onClick={() => saveInstructions(instructionsAiResponse, instructionsAiResponse.data.title)}
-                              style={btnPrimary}
-                            >
-                              <Save size={16} /> Save Instructions
-                            </button>
-                          </div>
-
-                          <div style={{ padding: '24px' }}>
-                            {/* Quick Stats */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
-                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Quantity</div>
-                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.quantity}</div>
-                              </div>
-                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Size</div>
-                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.size} oz</div>
-                              </div>
-                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>FO Load</div>
-                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.foLoad}%</div>
-                              </div>
-                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Est. Time</div>
-                                <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{instructionsAiResponse.data.estimatedTime || '1-2 hours'}</div>
-                              </div>
-                            </div>
-
-                            {/* Ingredients */}
-                            {instructionsAiResponse.data.ingredients && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Package size={18} color="#feca57" /> Ingredients
-                                </h4>
-                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
-                                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead>
-                                      <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
-                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Item</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Amount</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>ml</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>grams</th>
-                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Notes</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {instructionsAiResponse.data.ingredients.map((ing, i) => (
-                                        <tr key={i} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
-                                          <td style={{ padding: '12px', fontWeight: 500 }}>{ing.item}</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: '#feca57' }}>{ing.amount}</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{ing.amountMl}</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{ing.amountGrams}g</td>
-                                          <td style={{ padding: '12px', color: 'rgba(252,228,214,0.5)', fontSize: '13px' }}>{ing.notes}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Fragrance Breakdown */}
-                            {instructionsAiResponse.data.fragranceBreakdown && instructionsAiResponse.data.fragranceBreakdown.length > 0 && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Droplets size={18} color="#ff9ff3" /> Fragrance Breakdown
-                                </h4>
-                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
-                                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead>
-                                      <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
-                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Fragrance</th>
-                                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>%</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>oz</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>ml</th>
-                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>grams</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {instructionsAiResponse.data.fragranceBreakdown.map((frag, i) => (
-                                        <tr key={i} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
-                                          <td style={{ padding: '12px', fontWeight: 500 }}>{frag.name}</td>
-                                          <td style={{ padding: '12px', textAlign: 'center' }}>{frag.percent}%</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: '#ff9ff3', fontWeight: 600 }}>{frag.amountOz} oz</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{frag.amountMl}</td>
-                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{frag.amountGrams}g</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Supplies */}
-                            {instructionsAiResponse.data.supplies && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Box size={18} color="#74b9ff" /> Supplies
-                                </h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                                  {instructionsAiResponse.data.supplies.map((sup, i) => (
-                                    <div key={i} style={{ background: 'rgba(116,185,255,0.1)', border: '1px solid rgba(116,185,255,0.2)', borderRadius: '10px', padding: '12px' }}>
-                                      <div style={{ fontWeight: 500, marginBottom: '4px' }}>{sup.item}</div>
-                                      <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>Qty: {sup.quantity}</div>
-                                      {sup.notes && <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginTop: '4px' }}>{sup.notes}</div>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Temperature Guide */}
-                            {instructionsAiResponse.data.temperatures && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Flame size={18} color="#ff6b6b" /> Temperature Guide
-                                </h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                                  <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Melt Wax</div>
-                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#ff6b6b' }}>{instructionsAiResponse.data.temperatures.meltTemp}</div>
-                                  </div>
-                                  <div style={{ background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Add Fragrance</div>
-                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#feca57' }}>{instructionsAiResponse.data.temperatures.addFragrance}</div>
-                                  </div>
-                                  <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Pour</div>
-                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#55efc4' }}>{instructionsAiResponse.data.temperatures.pourTemp}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Steps */}
-                            {instructionsAiResponse.data.steps && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <ClipboardList size={18} color="#a29bfe" /> Step-by-Step Instructions
-                                </h4>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                  {instructionsAiResponse.data.steps.map((step, i) => (
-                                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px', borderLeft: '4px solid #a29bfe' }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                          <span style={{ background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#1a0a1e' }}>{step.step}</span>
-                                          <span style={{ fontSize: '16px', fontWeight: 600 }}>{step.title}</span>
-                                        </div>
-                                        {step.duration && <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '12px' }}>{step.duration}</span>}
-                                      </div>
-                                      <p style={{ color: 'rgba(252,228,214,0.8)', fontSize: '14px', marginBottom: step.tips?.length ? '12px' : 0, lineHeight: '1.5' }}>{step.description}</p>
-                                      {step.tips && step.tips.length > 0 && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                          {step.tips.map((tip, ti) => (
-                                            <span key={ti} style={{ fontSize: '11px', color: '#55efc4', background: 'rgba(85,239,196,0.1)', padding: '4px 8px', borderRadius: '4px' }}>💡 {tip}</span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Warnings & Pro Tips */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                              {instructionsAiResponse.data.warnings && instructionsAiResponse.data.warnings.length > 0 && (
-                                <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '12px', padding: '16px' }}>
-                                  <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ff6b6b', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <AlertTriangle size={16} /> Safety Warnings
-                                  </h5>
-                                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
-                                    {instructionsAiResponse.data.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {instructionsAiResponse.data.proTips && instructionsAiResponse.data.proTips.length > 0 && (
-                                <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '12px', padding: '16px' }}>
-                                  <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Sparkles size={16} /> Pro Tips
-                                  </h5>
-                                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
-                                    {instructionsAiResponse.data.proTips.map((t, i) => <li key={i}>{t}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Cure Time */}
-                            {instructionsAiResponse.data.cureTime && (
-                              <div style={{ marginTop: '16px', background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-                                <span style={{ fontSize: '14px', color: 'rgba(252,228,214,0.7)' }}>Cure Time: </span>
-                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#feca57' }}>{instructionsAiResponse.data.cureTime}</span>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : instructionsAiResponse.text ? (
-                        <div style={{ padding: '24px', whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.6' }}>
-                          {instructionsAiResponse.text}
-                          <div style={{ marginTop: '16px' }}>
-                            <button onClick={() => saveInstructions(instructionsAiResponse, 'Custom Instructions')} style={btnPrimary}>
-                              <Save size={16} /> Save Instructions
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
 
                   {/* Viewing Saved Instruction */}
                   {viewingInstruction && (
