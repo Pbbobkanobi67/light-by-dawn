@@ -134,3 +134,25 @@ ALTER TABLE fragrances ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
 
 -- Add archived column to recipes table
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
+
+-- ============================================
+-- Saved Instructions table (for AI-generated batch instructions)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS saved_instructions (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  prompt TEXT,
+  data JSONB,           -- Structured AI response (ingredients, steps, etc.)
+  text TEXT             -- Fallback for non-JSON responses
+);
+
+-- Enable Row Level Security
+ALTER TABLE saved_instructions ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for public access
+CREATE POLICY "Allow public read" ON saved_instructions FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON saved_instructions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON saved_instructions FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON saved_instructions FOR DELETE USING (true);

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -66,6 +66,7 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'recipes', label: 'Recipes', icon: BookOpen },
   { id: 'calculator', label: 'Batch Builder', icon: Calculator },
+  { id: 'instructions', label: 'Instructions', icon: ScrollText },
   { id: 'inventory', label: 'Inventory', icon: Box },
   { id: 'materials', label: 'Materials', icon: Package },
   { id: 'fragrances', label: 'Fragrances', icon: Droplets },
@@ -172,7 +173,7 @@ export default function CandleBusinessApp() {
   const [editingFragrance, setEditingFragrance] = useState(null);
 
   // Form states
-  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
@@ -208,13 +209,22 @@ export default function CandleBusinessApp() {
   const [profitAnalysis, setProfitAnalysis] = useState(null);
   const [profitAnalysisTime, setProfitAnalysisTime] = useState(0);
 
+  // Instructions page state
+  const [savedInstructions, setSavedInstructions] = useState(() => loadFromStorage('savedInstructions', []));
+  const [instructionsAiLoading, setInstructionsAiLoading] = useState(false);
+  const [instructionsAiPrompt, setInstructionsAiPrompt] = useState('');
+  const [instructionsAiResponse, setInstructionsAiResponse] = useState(null);
+  const [viewingInstruction, setViewingInstruction] = useState(null);
+  const [converterValue, setConverterValue] = useState('');
+  const [converterUnit, setConverterUnit] = useState('oz'); // 'oz', 'ml', 'g'
+
   // Supabase sync state
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'error'
 
   // Track loaded data counts to prevent syncing empty data over real data
   // CRITICAL: These refs must be declared BEFORE the load useEffect
-  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0 });
+  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0 });
   const syncEnabledRef = React.useRef(false);
 
   // Load data from Supabase on mount
@@ -223,12 +233,13 @@ export default function CandleBusinessApp() {
       try {
         setSyncStatus('syncing');
 
-        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes] = await Promise.all([
+        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes] = await Promise.all([
           supabase.from('materials').select('*'),
           supabase.from('fragrances').select('*'),
           supabase.from('recipes').select('*'),
           supabase.from('batch_history').select('*'),
           supabase.from('batch_list').select('*'),
+          supabase.from('saved_instructions').select('*'),
         ]);
 
         // If we have data in Supabase, use it; otherwise keep localStorage/defaults
@@ -252,6 +263,10 @@ export default function CandleBusinessApp() {
         if (batchListRes.data?.length > 0) {
           setBatchList(toCamelCase(batchListRes.data));
           loadedCountsRef.current.batchList = batchListRes.data.length;
+        }
+        if (savedInstructionsRes.data?.length > 0) {
+          setSavedInstructions(toCamelCase(savedInstructionsRes.data));
+          loadedCountsRef.current.savedInstructions = savedInstructionsRes.data.length;
         }
 
         console.log('Loaded from Supabase:', loadedCountsRef.current);
@@ -334,6 +349,11 @@ export default function CandleBusinessApp() {
     safeSyncToSupabase('batch_list', batchList, 'batchList');
   }, [batchList, safeSyncToSupabase]);
 
+  useEffect(() => {
+    saveToStorage('savedInstructions', savedInstructions);
+    safeSyncToSupabase('saved_instructions', savedInstructions, 'savedInstructions');
+  }, [savedInstructions, safeSyncToSupabase]);
+
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
   const [selectedMaterials, setSelectedMaterials] = useState([]);
@@ -342,7 +362,7 @@ export default function CandleBusinessApp() {
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [receiveForm, setReceiveForm] = useState({ materialId: '', quantity: 0 });
   const [showLogBatchModal, setShowLogBatchModal] = useState(false);
-  const [logBatchForm, setLogBatchForm] = useState({ recipe: '', quantity: 12, size: 9, notes: '', autoDeduct: true });
+  const [logBatchForm, setLogBatchForm] = useState({ recipe: '', quantity: 12, size: 4, notes: '', autoDeduct: true });
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportText, setExportText] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -926,7 +946,7 @@ export default function CandleBusinessApp() {
     
     setBatchHistory([newBatch, ...batchHistory]);
     setShowLogBatchModal(false);
-    setLogBatchForm({ recipe: '', quantity: 12, size: 9, notes: '', autoDeduct: true });
+    setLogBatchForm({ recipe: '', quantity: 12, size: 4, notes: '', autoDeduct: true });
   };
 
   // Open log batch modal with current batch info
@@ -1187,7 +1207,7 @@ export default function CandleBusinessApp() {
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
-    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
     setShowRecipeModal(true);
   };
 
@@ -1440,6 +1460,167 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
     } finally {
       setChatLoading(false);
     }
+  };
+
+  // AI Batch Instructions Generator
+  const generateBatchInstructions = async (prompt) => {
+    if (!prompt.trim() || instructionsAiLoading) return;
+
+    if (!geminiApiKey) {
+      setInstructionsAiResponse({ error: "Please set your Google Gemini API key first. Go to the Chat panel and click the key icon." });
+      return;
+    }
+
+    setInstructionsAiLoading(true);
+    setInstructionsAiResponse(null);
+
+    // Build inventory context for AI
+    const inventoryContext = {
+      materials: materials.map(m => ({
+        name: m.name, category: m.category, qtyOnHand: m.qtyOnHand, unit: m.unit,
+        costPerUnit: Math.round((m.packageCost / m.packageSize) * 100) / 100
+      })),
+      fragrances: fragrances.filter(f => !f.archived).map(f => {
+        const quantities = f.quantities || {};
+        const totalOz = Object.entries(quantities).reduce((sum, [sz, qty]) => sum + ((qty || 0) * parseFloat(sz)), 0);
+        return { name: f.name, type: f.type, vendor: f.vendor, totalOz: Math.round(totalOz * 10) / 10, maxLoad: f.maxLoad };
+      }),
+      recipes: recipes.filter(r => !r.archived).map(r => ({
+        name: r.name, vibe: r.vibe, style: r.style, description: r.description,
+        container: r.container, wax: r.wax, wick: r.wick, size: r.size, foLoad: r.foLoad,
+        components: r.components
+      }))
+    };
+
+    const systemPrompt = `You are a master candle maker assistant for "Light By Dawn" candle business. The user will ask you how to make a batch of candles. Your job is to provide detailed, practical instructions.
+
+You have access to their inventory and recipes:
+${JSON.stringify(inventoryContext, null, 2)}
+
+When the user asks about making candles, you MUST respond with a JSON object in this EXACT format (no markdown, just pure JSON):
+{
+  "title": "Batch instruction title (e.g., '12 Coastal Luxe 9oz Candles')",
+  "recipeName": "Name of the recipe if applicable",
+  "recipeVibe": "The vibe/style description",
+  "quantity": 12,
+  "size": 9,
+  "foLoad": 10,
+  "ingredients": [
+    { "item": "Golden Brands 464 Soy Wax", "amount": "6.8 lbs", "amountOz": 108.0, "amountMl": 3195, "amountGrams": 3062, "notes": "Main wax base" }
+  ],
+  "fragranceBreakdown": [
+    { "name": "Ocean Breeze", "percent": 55, "amountOz": 5.94, "amountMl": 176, "amountGrams": 168 }
+  ],
+  "supplies": [
+    { "item": "9oz Straight Side Jar", "quantity": 12, "notes": "Clean and pre-heat" },
+    { "item": "CD-18 Wicks", "quantity": 12, "notes": "Pre-tab wicks" }
+  ],
+  "steps": [
+    { "step": 1, "title": "Prepare Workspace", "description": "Set up your pouring station with all materials within reach. Ensure containers are clean and at room temperature.", "tips": ["Work in a well-ventilated area", "Cover surfaces to protect from spills"], "duration": "10 minutes" },
+    { "step": 2, "title": "Melt Wax", "description": "Add wax to double boiler and heat to 180-185°F.", "tips": ["Use a thermometer", "Stir occasionally"], "duration": "20-30 minutes" }
+  ],
+  "temperatures": {
+    "meltTemp": "180-185°F",
+    "addFragrance": "135-145°F",
+    "pourTemp": "130-140°F"
+  },
+  "cureTime": "1-2 weeks",
+  "estimatedTime": "1.5-2 hours active, plus cooling",
+  "warnings": ["Never leave melting wax unattended", "Keep water away from hot wax"],
+  "proTips": ["Pre-heat jars slightly for better adhesion", "Pour slowly to minimize air bubbles"]
+}
+
+Calculate all amounts precisely based on the batch size. Provide measurements in oz, ml, and grams for flexibility.
+If the user asks about a recipe you don't have, create custom instructions based on best practices.
+Always include safety warnings and pro tips from your expertise.`;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Clean up response - remove markdown code blocks if present
+      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+      try {
+        const parsed = JSON.parse(responseText);
+        setInstructionsAiResponse({ success: true, data: parsed, rawPrompt: prompt });
+      } catch (parseError) {
+        // If JSON parsing fails, store as text
+        setInstructionsAiResponse({ success: true, text: responseText, rawPrompt: prompt });
+      }
+    } catch (error) {
+      console.error("Instructions AI error:", error);
+      setInstructionsAiResponse({ error: error.message });
+    } finally {
+      setInstructionsAiLoading(false);
+    }
+  };
+
+  // Save AI-generated instructions
+  const saveInstructions = (instructionData, customTitle) => {
+    const newInstruction = {
+      id: `INS-${Date.now()}`,
+      title: customTitle || instructionData.title || 'Untitled Instructions',
+      createdAt: new Date().toISOString(),
+      prompt: instructionData.rawPrompt || '',
+      data: instructionData.data || null,
+      text: instructionData.text || null
+    };
+    setSavedInstructions(prev => [newInstruction, ...prev]);
+    setInstructionsAiResponse(null);
+    setInstructionsAiPrompt('');
+  };
+
+  // Delete saved instructions
+  const deleteInstruction = (id) => {
+    setSavedInstructions(prev => prev.filter(i => i.id !== id));
+    if (viewingInstruction?.id === id) {
+      setViewingInstruction(null);
+    }
+  };
+
+  // Unit converter functions
+  const convertUnits = (value, fromUnit) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) return { oz: '', ml: '', g: '' };
+
+    // Conversion factors (for fragrance oils/wax - approximate)
+    // 1 oz = 29.5735 ml, 1 oz fragrance oil ≈ 28.35g (varies by density)
+    let oz, ml, g;
+
+    if (fromUnit === 'oz') {
+      oz = num;
+      ml = num * 29.5735;
+      g = num * 28.35; // approximate for fragrance oils
+    } else if (fromUnit === 'ml') {
+      oz = num / 29.5735;
+      ml = num;
+      g = num * 0.96; // approximate density for oils
+    } else if (fromUnit === 'g') {
+      oz = num / 28.35;
+      ml = num / 0.96;
+      g = num;
+    }
+
+    return {
+      oz: oz.toFixed(2),
+      ml: ml.toFixed(1),
+      g: g.toFixed(1)
+    };
   };
 
   // Chat window drag handlers
@@ -2477,6 +2658,448 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Instructions Page */}
+          {activeTab === 'instructions' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Instructions</h2>
+                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>Ask the AI how to make candles and save detailed instructions</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
+                {/* Main Content Area */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* AI Prompt Section */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <Sparkles size={20} color="#a29bfe" />
+                      <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Ask AI for Instructions</h3>
+                    </div>
+                    <p style={{ color: 'rgba(252,228,214,0.6)', fontSize: '14px', marginBottom: '16px' }}>
+                      Ask how to make a batch of candles. The AI knows your recipes and inventory!
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <input
+                        type="text"
+                        value={instructionsAiPrompt}
+                        onChange={(e) => setInstructionsAiPrompt(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && generateBatchInstructions(instructionsAiPrompt)}
+                        placeholder="e.g., How do I make 12 Coastal Luxe 9oz candles?"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      <button
+                        onClick={() => generateBatchInstructions(instructionsAiPrompt)}
+                        disabled={instructionsAiLoading || !instructionsAiPrompt.trim()}
+                        style={{ ...btnPrimary, opacity: instructionsAiLoading || !instructionsAiPrompt.trim() ? 0.5 : 1 }}
+                      >
+                        {instructionsAiLoading ? <><RotateCcw size={18} style={{ animation: 'spin 1s linear infinite' }} /><style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style></> : <Send size={18} />}
+                        {instructionsAiLoading ? 'Generating...' : 'Generate'}
+                      </button>
+                    </div>
+                    {/* Quick prompts */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                      {recipes.filter(r => !r.archived).slice(0, 4).map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => setInstructionsAiPrompt(`How do I make 12 ${r.name} ${r.size}oz candles?`)}
+                          style={{ padding: '6px 12px', background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '20px', color: '#a29bfe', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          {r.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* AI Response */}
+                  {instructionsAiResponse && (
+                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                      {instructionsAiResponse.error ? (
+                        <div style={{ padding: '24px', color: '#ff6b6b' }}>
+                          <AlertTriangle size={20} style={{ marginRight: '8px' }} />
+                          {instructionsAiResponse.error}
+                        </div>
+                      ) : instructionsAiResponse.data ? (
+                        <>
+                          {/* Header with save button */}
+                          <div style={{ padding: '20px 24px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{instructionsAiResponse.data.title}</h3>
+                              {instructionsAiResponse.data.recipeVibe && <p style={{ color: 'rgba(252,228,214,0.6)', fontSize: '14px' }}>{instructionsAiResponse.data.recipeVibe}</p>}
+                            </div>
+                            <button
+                              onClick={() => saveInstructions(instructionsAiResponse, instructionsAiResponse.data.title)}
+                              style={btnPrimary}
+                            >
+                              <Save size={16} /> Save Instructions
+                            </button>
+                          </div>
+
+                          <div style={{ padding: '24px' }}>
+                            {/* Quick Stats */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Quantity</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.quantity}</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Size</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.size} oz</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>FO Load</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{instructionsAiResponse.data.foLoad}%</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Est. Time</div>
+                                <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{instructionsAiResponse.data.estimatedTime || '1-2 hours'}</div>
+                              </div>
+                            </div>
+
+                            {/* Ingredients */}
+                            {instructionsAiResponse.data.ingredients && (
+                              <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Package size={18} color="#feca57" /> Ingredients
+                                </h4>
+                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                      <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Item</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Amount</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>ml</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>grams</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Notes</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {instructionsAiResponse.data.ingredients.map((ing, i) => (
+                                        <tr key={i} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
+                                          <td style={{ padding: '12px', fontWeight: 500 }}>{ing.item}</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: '#feca57' }}>{ing.amount}</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{ing.amountMl}</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{ing.amountGrams}g</td>
+                                          <td style={{ padding: '12px', color: 'rgba(252,228,214,0.5)', fontSize: '13px' }}>{ing.notes}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Fragrance Breakdown */}
+                            {instructionsAiResponse.data.fragranceBreakdown && instructionsAiResponse.data.fragranceBreakdown.length > 0 && (
+                              <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Droplets size={18} color="#ff9ff3" /> Fragrance Breakdown
+                                </h4>
+                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                      <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>Fragrance</th>
+                                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>%</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>oz</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>ml</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', color: 'rgba(252,228,214,0.6)' }}>grams</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {instructionsAiResponse.data.fragranceBreakdown.map((frag, i) => (
+                                        <tr key={i} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
+                                          <td style={{ padding: '12px', fontWeight: 500 }}>{frag.name}</td>
+                                          <td style={{ padding: '12px', textAlign: 'center' }}>{frag.percent}%</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: '#ff9ff3', fontWeight: 600 }}>{frag.amountOz} oz</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{frag.amountMl}</td>
+                                          <td style={{ padding: '12px', textAlign: 'right', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{frag.amountGrams}g</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Supplies */}
+                            {instructionsAiResponse.data.supplies && (
+                              <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Box size={18} color="#74b9ff" /> Supplies
+                                </h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                                  {instructionsAiResponse.data.supplies.map((sup, i) => (
+                                    <div key={i} style={{ background: 'rgba(116,185,255,0.1)', border: '1px solid rgba(116,185,255,0.2)', borderRadius: '10px', padding: '12px' }}>
+                                      <div style={{ fontWeight: 500, marginBottom: '4px' }}>{sup.item}</div>
+                                      <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>Qty: {sup.quantity}</div>
+                                      {sup.notes && <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginTop: '4px' }}>{sup.notes}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Temperature Guide */}
+                            {instructionsAiResponse.data.temperatures && (
+                              <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Flame size={18} color="#ff6b6b" /> Temperature Guide
+                                </h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                  <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Melt Wax</div>
+                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#ff6b6b' }}>{instructionsAiResponse.data.temperatures.meltTemp}</div>
+                                  </div>
+                                  <div style={{ background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Add Fragrance</div>
+                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#feca57' }}>{instructionsAiResponse.data.temperatures.addFragrance}</div>
+                                  </div>
+                                  <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Pour</div>
+                                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#55efc4' }}>{instructionsAiResponse.data.temperatures.pourTemp}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Steps */}
+                            {instructionsAiResponse.data.steps && (
+                              <div style={{ marginBottom: '24px' }}>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <ClipboardList size={18} color="#a29bfe" /> Step-by-Step Instructions
+                                </h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                  {instructionsAiResponse.data.steps.map((step, i) => (
+                                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px', borderLeft: '4px solid #a29bfe' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                          <span style={{ background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#1a0a1e' }}>{step.step}</span>
+                                          <span style={{ fontSize: '16px', fontWeight: 600 }}>{step.title}</span>
+                                        </div>
+                                        {step.duration && <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '12px' }}>{step.duration}</span>}
+                                      </div>
+                                      <p style={{ color: 'rgba(252,228,214,0.8)', fontSize: '14px', marginBottom: step.tips?.length ? '12px' : 0, lineHeight: '1.5' }}>{step.description}</p>
+                                      {step.tips && step.tips.length > 0 && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                          {step.tips.map((tip, ti) => (
+                                            <span key={ti} style={{ fontSize: '11px', color: '#55efc4', background: 'rgba(85,239,196,0.1)', padding: '4px 8px', borderRadius: '4px' }}>💡 {tip}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Warnings & Pro Tips */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                              {instructionsAiResponse.data.warnings && instructionsAiResponse.data.warnings.length > 0 && (
+                                <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '12px', padding: '16px' }}>
+                                  <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ff6b6b', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <AlertTriangle size={16} /> Safety Warnings
+                                  </h5>
+                                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
+                                    {instructionsAiResponse.data.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {instructionsAiResponse.data.proTips && instructionsAiResponse.data.proTips.length > 0 && (
+                                <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '12px', padding: '16px' }}>
+                                  <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Sparkles size={16} /> Pro Tips
+                                  </h5>
+                                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
+                                    {instructionsAiResponse.data.proTips.map((t, i) => <li key={i}>{t}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Cure Time */}
+                            {instructionsAiResponse.data.cureTime && (
+                              <div style={{ marginTop: '16px', background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                                <span style={{ fontSize: '14px', color: 'rgba(252,228,214,0.7)' }}>Cure Time: </span>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#feca57' }}>{instructionsAiResponse.data.cureTime}</span>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : instructionsAiResponse.text ? (
+                        <div style={{ padding: '24px', whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.6' }}>
+                          {instructionsAiResponse.text}
+                          <div style={{ marginTop: '16px' }}>
+                            <button onClick={() => saveInstructions(instructionsAiResponse, 'Custom Instructions')} style={btnPrimary}>
+                              <Save size={16} /> Save Instructions
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Viewing Saved Instruction */}
+                  {viewingInstruction && (
+                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                      <div style={{ padding: '20px 24px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>{viewingInstruction.title}</h3>
+                          <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '12px' }}>Saved on {new Date(viewingInstruction.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => {
+                            const content = viewingInstruction.data ? JSON.stringify(viewingInstruction.data, null, 2) : viewingInstruction.text;
+                            const printWindow = window.open('', '_blank');
+                            printWindow.document.write(`<html><head><title>${viewingInstruction.title}</title><style>body{font-family:Arial,sans-serif;padding:20px;}</style></head><body><h1>${viewingInstruction.title}</h1><pre>${content}</pre></body></html>`);
+                            printWindow.document.close();
+                            printWindow.print();
+                          }} style={{ ...btnSecondary, padding: '8px 16px' }}><Printer size={16} /> Print</button>
+                          <button onClick={() => setViewingInstruction(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '8px', color: '#fce4d6', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '24px' }}>
+                        {viewingInstruction.data ? (
+                          // Same rendering as AI response
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Quantity</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{viewingInstruction.data.quantity}</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Size</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{viewingInstruction.data.size} oz</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>FO Load</div>
+                                <div style={{ fontSize: '24px', fontWeight: 700 }}>{viewingInstruction.data.foLoad}%</div>
+                              </div>
+                              <div style={{ background: 'rgba(255,159,107,0.08)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Cure Time</div>
+                                <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>{viewingInstruction.data.cureTime}</div>
+                              </div>
+                            </div>
+                            {/* Steps summary */}
+                            {viewingInstruction.data.steps && (
+                              <div>
+                                <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>Steps</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {viewingInstruction.data.steps.map((step, i) => (
+                                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px', display: 'flex', gap: '12px' }}>
+                                      <span style={{ background: '#a29bfe', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#1a0a1e', flexShrink: 0 }}>{step.step}</span>
+                                      <div>
+                                        <div style={{ fontWeight: 500, marginBottom: '4px' }}>{step.title}</div>
+                                        <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>{step.description}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.6' }}>{viewingInstruction.text}</pre>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* Unit Converter */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <Scale size={20} color="#74b9ff" />
+                      <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Unit Converter</h3>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                      <input
+                        type="number"
+                        value={converterValue}
+                        onChange={(e) => setConverterValue(e.target.value)}
+                        placeholder="Enter value"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      <select value={converterUnit} onChange={(e) => setConverterUnit(e.target.value)} style={{ ...inputStyle, width: '80px' }}>
+                        <option value="oz">oz</option>
+                        <option value="ml">ml</option>
+                        <option value="g">g</option>
+                      </select>
+                    </div>
+                    {converterValue && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {Object.entries(convertUnits(converterValue, converterUnit)).map(([unit, val]) => (
+                          <div key={unit} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: unit === converterUnit ? 'rgba(116,185,255,0.15)' : 'rgba(255,255,255,0.03)', borderRadius: '8px', border: unit === converterUnit ? '1px solid rgba(116,185,255,0.3)' : '1px solid transparent' }}>
+                            <span style={{ textTransform: 'uppercase', fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{unit}</span>
+                            <span style={{ fontWeight: 600, color: unit === converterUnit ? '#74b9ff' : '#fce4d6' }}>{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '12px' }}>
+                      * Approximate for fragrance oils/wax (density ≈ 0.96 g/ml)
+                    </p>
+                  </div>
+
+                  {/* Saved Instructions */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FileText size={20} color="#feca57" />
+                        <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Saved Instructions</h3>
+                      </div>
+                      <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{savedInstructions.length}</span>
+                    </div>
+                    {savedInstructions.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(252,228,214,0.4)' }}>
+                        <ScrollText size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                        <p style={{ fontSize: '13px' }}>No saved instructions yet</p>
+                        <p style={{ fontSize: '12px', marginTop: '4px' }}>Generate instructions with AI and save them here</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                        {savedInstructions.map(ins => (
+                          <div
+                            key={ins.id}
+                            style={{
+                              background: viewingInstruction?.id === ins.id ? 'rgba(254,202,87,0.15)' : 'rgba(255,255,255,0.03)',
+                              border: viewingInstruction?.id === ins.id ? '1px solid rgba(254,202,87,0.3)' : '1px solid rgba(255,255,255,0.05)',
+                              borderRadius: '10px',
+                              padding: '12px',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => setViewingInstruction(ins)}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 500, fontSize: '14px', marginBottom: '4px' }}>{ins.title}</div>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)' }}>
+                                  {new Date(ins.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm('Delete this instruction?')) deleteInstruction(ins.id);
+                                }}
+                                style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
