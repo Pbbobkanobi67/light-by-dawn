@@ -156,3 +156,24 @@ CREATE POLICY "Allow public read" ON saved_instructions FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON saved_instructions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON saved_instructions FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete" ON saved_instructions FOR DELETE USING (true);
+
+-- ============================================
+-- Saved Chats table (for AI conversation history)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS saved_chats (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  messages JSONB           -- Array of conversation messages
+);
+
+-- Enable Row Level Security
+ALTER TABLE saved_chats ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for public access
+CREATE POLICY "Allow public read" ON saved_chats FOR SELECT USING (true);
+CREATE POLICY "Allow public insert" ON saved_chats FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update" ON saved_chats FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON saved_chats FOR DELETE USING (true);

@@ -211,13 +211,16 @@ export default function CandleBusinessApp() {
 
   // Instructions page state
   const [savedInstructions, setSavedInstructions] = useState(() => loadFromStorage('savedInstructions', []));
+  const [savedChats, setSavedChats] = useState(() => loadFromStorage('savedChats', []));
   const [instructionsAiLoading, setInstructionsAiLoading] = useState(false);
   const [instructionsAiPrompt, setInstructionsAiPrompt] = useState('');
   const [instructionsAiResponse, setInstructionsAiResponse] = useState(null);
   const [instructionsConversation, setInstructionsConversation] = useState([]); // Full conversation history
+  const [currentChatId, setCurrentChatId] = useState(null); // Track which saved chat is loaded
   const [viewingInstruction, setViewingInstruction] = useState(null);
   const [converterValue, setConverterValue] = useState('');
   const [converterUnit, setConverterUnit] = useState('oz'); // 'oz', 'ml', 'g'
+  const conversationEndRef = React.useRef(null); // For auto-scroll
 
   // Supabase sync state
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -225,7 +228,7 @@ export default function CandleBusinessApp() {
 
   // Track loaded data counts to prevent syncing empty data over real data
   // CRITICAL: These refs must be declared BEFORE the load useEffect
-  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0 });
+  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0, savedChats: 0 });
   const syncEnabledRef = React.useRef(false);
 
   // Load data from Supabase on mount
@@ -234,13 +237,14 @@ export default function CandleBusinessApp() {
       try {
         setSyncStatus('syncing');
 
-        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes] = await Promise.all([
+        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes, savedChatsRes] = await Promise.all([
           supabase.from('materials').select('*'),
           supabase.from('fragrances').select('*'),
           supabase.from('recipes').select('*'),
           supabase.from('batch_history').select('*'),
           supabase.from('batch_list').select('*'),
           supabase.from('saved_instructions').select('*'),
+          supabase.from('saved_chats').select('*'),
         ]);
 
         // If we have data in Supabase, use it; otherwise keep localStorage/defaults
@@ -268,6 +272,10 @@ export default function CandleBusinessApp() {
         if (savedInstructionsRes.data?.length > 0) {
           setSavedInstructions(toCamelCase(savedInstructionsRes.data));
           loadedCountsRef.current.savedInstructions = savedInstructionsRes.data.length;
+        }
+        if (savedChatsRes.data?.length > 0) {
+          setSavedChats(toCamelCase(savedChatsRes.data));
+          loadedCountsRef.current.savedChats = savedChatsRes.data.length;
         }
 
         console.log('Loaded from Supabase:', loadedCountsRef.current);
@@ -354,6 +362,18 @@ export default function CandleBusinessApp() {
     saveToStorage('savedInstructions', savedInstructions);
     safeSyncToSupabase('saved_instructions', savedInstructions, 'savedInstructions');
   }, [savedInstructions, safeSyncToSupabase]);
+
+  useEffect(() => {
+    saveToStorage('savedChats', savedChats);
+    safeSyncToSupabase('saved_chats', savedChats, 'savedChats');
+  }, [savedChats, safeSyncToSupabase]);
+
+  // Auto-scroll conversation to bottom when new messages arrive
+  useEffect(() => {
+    if (conversationEndRef.current) {
+      conversationEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [instructionsConversation, instructionsAiLoading]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
@@ -1573,6 +1593,51 @@ Calculate all amounts precisely. Provide measurements in oz, ml, and grams for f
   const clearInstructionsConversation = () => {
     setInstructionsConversation([]);
     setInstructionsAiResponse(null);
+    setCurrentChatId(null);
+  };
+
+  // Save current chat session
+  const saveCurrentChat = () => {
+    if (instructionsConversation.length === 0) return;
+
+    // Generate title from first user message
+    const firstUserMsg = instructionsConversation.find(m => m.role === 'user');
+    const title = firstUserMsg ? firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '') : 'Untitled Chat';
+
+    if (currentChatId) {
+      // Update existing chat
+      setSavedChats(prev => prev.map(chat =>
+        chat.id === currentChatId
+          ? { ...chat, messages: instructionsConversation, updatedAt: new Date().toISOString() }
+          : chat
+      ));
+    } else {
+      // Create new chat
+      const newChat = {
+        id: `CHAT-${Date.now()}`,
+        title,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: instructionsConversation
+      };
+      setSavedChats(prev => [newChat, ...prev]);
+      setCurrentChatId(newChat.id);
+    }
+  };
+
+  // Load a saved chat
+  const loadChat = (chat) => {
+    setInstructionsConversation(chat.messages);
+    setCurrentChatId(chat.id);
+    setInstructionsAiResponse(null);
+  };
+
+  // Delete a saved chat
+  const deleteChat = (id) => {
+    setSavedChats(prev => prev.filter(c => c.id !== id));
+    if (currentChatId === id) {
+      setCurrentChatId(null);
+    }
   };
 
   // Save AI-generated instructions
@@ -2817,6 +2882,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           <span style={{ fontSize: '13px' }}>Thinking...</span>
                         </div>
                       )}
+                      {/* Auto-scroll anchor */}
+                      <div ref={conversationEndRef} />
                     </div>
 
                     {/* Input Area */}
@@ -2830,6 +2897,15 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           placeholder={instructionsConversation.length === 0 ? "How do I make 12 Coastal Luxe candles?" : "Ask a follow-up question..."}
                           style={{ ...inputStyle, flex: 1 }}
                         />
+                        {instructionsConversation.length > 0 && (
+                          <button
+                            onClick={saveCurrentChat}
+                            style={{ ...btnSecondary, padding: '12px' }}
+                            title={currentChatId ? "Update saved chat" : "Save chat"}
+                          >
+                            <Save size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => generateBatchInstructions(instructionsAiPrompt)}
                           disabled={instructionsAiLoading || !instructionsAiPrompt.trim()}
@@ -2945,6 +3021,58 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     </p>
                   </div>
 
+                  {/* Saved Chats */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <MessageSquare size={20} color="#a29bfe" />
+                        <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Saved Chats</h3>
+                      </div>
+                      <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{savedChats.length}</span>
+                    </div>
+                    {savedChats.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(252,228,214,0.4)' }}>
+                        <MessageSquare size={28} style={{ marginBottom: '8px', opacity: 0.4 }} />
+                        <p style={{ fontSize: '12px' }}>No saved chats yet</p>
+                        <p style={{ fontSize: '11px', marginTop: '4px' }}>Click the save icon to save a conversation</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                        {savedChats.map(chat => (
+                          <div
+                            key={chat.id}
+                            style={{
+                              background: currentChatId === chat.id ? 'rgba(162,155,254,0.15)' : 'rgba(255,255,255,0.03)',
+                              border: currentChatId === chat.id ? '1px solid rgba(162,155,254,0.3)' : '1px solid rgba(255,255,255,0.05)',
+                              borderRadius: '10px',
+                              padding: '10px 12px',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => loadChat(chat)}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 500, fontSize: '13px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.title}</div>
+                                <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>
+                                  {chat.messages.length} messages • {new Date(chat.updatedAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm('Delete this chat?')) deleteChat(chat.id);
+                                }}
+                                style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '5px', padding: '4px', color: '#ff6b6b', cursor: 'pointer', flexShrink: 0 }}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Saved Instructions */}
                   <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -2961,7 +3089,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <p style={{ fontSize: '12px', marginTop: '4px' }}>Generate instructions with AI and save them here</p>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                         {savedInstructions.map(ins => (
                           <div
                             key={ins.id}
