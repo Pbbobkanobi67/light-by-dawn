@@ -1526,14 +1526,48 @@ You have access to their inventory and recipes:
 ${JSON.stringify(inventoryContext, null, 2)}
 
 RESPONSE FORMAT:
-- For batch instruction requests (e.g., "How do I make 12 candles"), respond with a JSON object containing: title, recipeName, recipeVibe, quantity, size, foLoad, ingredients (with amountOz, amountMl, amountGrams), fragranceBreakdown, supplies, steps (with tips), temperatures, cureTime, estimatedTime, warnings, proTips
+- For batch instruction requests (e.g., "How do I make 12 candles"), respond with a JSON object in the EXACT format shown below
 - For follow-up questions, modifications, or general questions, respond in plain conversational text
 - Be helpful, friendly, and knowledgeable about candle making
 
-When providing JSON batch instructions, use this format (no markdown, pure JSON):
-{"title": "...", "quantity": 12, "size": 9, "foLoad": 10, "ingredients": [...], "fragranceBreakdown": [...], "supplies": [...], "steps": [...], "temperatures": {...}, "cureTime": "...", "warnings": [...], "proTips": [...]}
+When providing JSON batch instructions, you MUST use this EXACT format (no markdown, pure JSON):
+{
+  "title": "12 Coastal Luxe 9oz Candles",
+  "recipeName": "Coastal Luxe",
+  "recipeVibe": "Fresh ocean breeze with warm undertones",
+  "quantity": 12,
+  "size": 9,
+  "foLoad": 10,
+  "ingredients": [
+    { "item": "Golden Brands 464 Soy Wax", "amount": "6.8 lbs", "amountOz": 108.0, "amountMl": 3195, "amountGrams": 3062, "notes": "Main wax base" }
+  ],
+  "fragranceBreakdown": [
+    { "name": "Ocean Breeze", "percent": 55, "amountOz": 5.94, "amountMl": 176, "amountGrams": 168 }
+  ],
+  "supplies": [
+    { "item": "9oz Straight Side Jar", "quantity": 12, "notes": "Clean and pre-heat" }
+  ],
+  "steps": [
+    { "step": 1, "title": "Prepare Workspace", "description": "Set up your pouring station with all materials within reach. Ensure containers are clean and at room temperature.", "tips": ["Work in a well-ventilated area", "Cover surfaces to protect from spills"], "duration": "10 minutes" },
+    { "step": 2, "title": "Melt Wax", "description": "Add wax to double boiler and heat to 180-185°F. Stir occasionally until fully melted.", "tips": ["Use a thermometer for accuracy", "Never leave wax unattended"], "duration": "20-30 minutes" },
+    { "step": 3, "title": "Prepare Containers", "description": "While wax melts, center and secure wicks in each container using wick stickers or hot glue.", "tips": ["Use wick centering tools", "Double-check wick is straight"], "duration": "10 minutes" },
+    { "step": 4, "title": "Add Fragrance", "description": "Remove wax from heat, let cool to 135-145°F, then add fragrance oil. Stir gently for 2 full minutes.", "tips": ["Don't rush the stirring", "Add fragrance off heat"], "duration": "5 minutes" },
+    { "step": 5, "title": "Pour Candles", "description": "Pour wax slowly into prepared containers at 130-140°F, leaving 1/2 inch headspace.", "tips": ["Pour slowly to minimize air bubbles", "Save some wax for top-off"], "duration": "10 minutes" },
+    { "step": 6, "title": "Cool and Cure", "description": "Let candles cool undisturbed for 24 hours, then cure for 1-2 weeks before burning.", "tips": ["Don't move while cooling", "Patience improves scent throw"], "duration": "24+ hours" }
+  ],
+  "temperatures": {
+    "meltTemp": "180-185°F",
+    "addFragrance": "135-145°F",
+    "pourTemp": "130-140°F"
+  },
+  "cureTime": "1-2 weeks",
+  "estimatedTime": "1.5-2 hours active, plus cooling",
+  "warnings": ["Never leave melting wax unattended", "Keep water away from hot wax", "Work in ventilated area"],
+  "proTips": ["Pre-heat jars slightly for better adhesion", "Pour slowly to minimize air bubbles", "Keep detailed batch notes"]
+}
 
-Calculate all amounts precisely. Provide measurements in oz, ml, and grams for flexibility.`;
+CRITICAL: Each step MUST have these exact fields: "step" (number), "title" (short name), "description" (detailed instructions), "tips" (array of strings), "duration" (time estimate).
+Calculate all amounts precisely based on batch size. Provide measurements in oz, ml, and grams.`;
 
     // Build conversation history for Gemini
     const conversationHistory = instructionsConversation.map(m => ({
