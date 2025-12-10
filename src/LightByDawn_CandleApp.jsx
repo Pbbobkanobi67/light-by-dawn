@@ -2846,45 +2846,47 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                 {msg.content}
                               </div>
                             ) : msg.data ? (
-                              // Structured batch instructions
-                              <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '16px', maxWidth: '100%', overflow: 'hidden' }}>
-                                <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              // Structured batch instructions - full width card
+                              <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '16px', width: '100%', overflow: 'hidden' }}>
+                                <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                                   <div>
-                                    <h4 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '2px' }}>{msg.data.title}</h4>
-                                    {msg.data.recipeVibe && <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{msg.data.recipeVibe}</p>}
+                                    <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{msg.data.title}</h4>
+                                    {msg.data.recipeVibe && <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>{msg.data.recipeVibe}</p>}
                                   </div>
-                                  <button onClick={() => saveInstructions({ data: msg.data, rawPrompt: '' }, msg.data.title)} style={{ ...btnPrimary, padding: '6px 12px', fontSize: '12px' }}>
-                                    <Save size={14} /> Save
+                                  <button onClick={() => saveInstructions({ data: msg.data, rawPrompt: '' }, msg.data.title)} style={{ ...btnPrimary, padding: '8px 16px', fontSize: '13px' }}>
+                                    <Save size={16} /> Save Instructions
                                   </button>
                                 </div>
-                                <div style={{ padding: '16px 20px' }}>
+                                <div style={{ padding: '20px', maxHeight: '500px', overflowY: 'auto' }}>
                                   {/* Quick Stats */}
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Qty</div>
-                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.quantity}</div>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '14px', borderRadius: '10px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Quantity</div>
+                                      <div style={{ fontSize: '24px', fontWeight: 700 }}>{msg.data.quantity}</div>
                                     </div>
-                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Size</div>
-                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.size}oz</div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '14px', borderRadius: '10px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Size</div>
+                                      <div style={{ fontSize: '24px', fontWeight: 700 }}>{msg.data.size}oz</div>
                                     </div>
-                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>FO</div>
-                                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{msg.data.foLoad}%</div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '14px', borderRadius: '10px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>FO Load</div>
+                                      <div style={{ fontSize: '24px', fontWeight: 700 }}>{msg.data.foLoad}%</div>
                                     </div>
-                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                      <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase' }}>Cure</div>
-                                      <div style={{ fontSize: '12px', fontWeight: 600 }}>{msg.data.cureTime}</div>
+                                    <div style={{ background: 'rgba(255,159,107,0.08)', padding: '14px', borderRadius: '10px', textAlign: 'center' }}>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Cure Time</div>
+                                      <div style={{ fontSize: '16px', fontWeight: 600 }}>{msg.data.cureTime}</div>
                                     </div>
                                   </div>
 
-                                  {/* Ingredients summary */}
+                                  {/* Ingredients */}
                                   {msg.data.ingredients && (
-                                    <div style={{ marginBottom: '12px' }}>
-                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#feca57' }}>Ingredients:</div>
+                                    <div style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: '#feca57', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Package size={16} /> Ingredients
+                                      </div>
                                       {msg.data.ingredients.map((ing, j) => (
-                                        <div key={j} style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', marginBottom: '2px' }}>
-                                          • {ing.item}: {ing.amount} ({ing.amountMl}ml / {ing.amountGrams}g)
+                                        <div key={j} style={{ fontSize: '14px', color: 'rgba(252,228,214,0.9)', marginBottom: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(254,202,87,0.3)' }}>
+                                          <strong>{ing.item}</strong>: {ing.amount} <span style={{ color: 'rgba(252,228,214,0.5)' }}>({ing.amountMl}ml / {ing.amountGrams}g)</span>
                                         </div>
                                       ))}
                                     </div>
@@ -2892,11 +2894,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
                                   {/* Fragrance breakdown */}
                                   {msg.data.fragranceBreakdown && msg.data.fragranceBreakdown.length > 0 && (
-                                    <div style={{ marginBottom: '12px' }}>
-                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#ff9ff3' }}>Fragrance Blend:</div>
+                                    <div style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: '#ff9ff3', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Droplets size={16} /> Fragrance Blend
+                                      </div>
                                       {msg.data.fragranceBreakdown.map((f, j) => (
-                                        <div key={j} style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', marginBottom: '2px' }}>
-                                          • {f.name}: {f.percent}% = {f.amountOz}oz ({f.amountMl}ml)
+                                        <div key={j} style={{ fontSize: '14px', color: 'rgba(252,228,214,0.9)', marginBottom: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(255,159,243,0.3)' }}>
+                                          <strong>{f.name}</strong>: {f.percent}% = {f.amountOz}oz <span style={{ color: 'rgba(252,228,214,0.5)' }}>({f.amountMl}ml / {f.amountGrams}g)</span>
                                         </div>
                                       ))}
                                     </div>
@@ -2904,25 +2908,75 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
                                   {/* Temperature Guide */}
                                   {msg.data.temperatures && (
-                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(255,107,107,0.15)', borderRadius: '4px', color: '#ff6b6b' }}>Melt: {msg.data.temperatures.meltTemp}</span>
-                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(254,202,87,0.15)', borderRadius: '4px', color: '#feca57' }}>Add FO: {msg.data.temperatures.addFragrance}</span>
-                                      <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(85,239,196,0.15)', borderRadius: '4px', color: '#55efc4' }}>Pour: {msg.data.temperatures.pourTemp}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Steps preview */}
-                                  {msg.data.steps && (
-                                    <div>
-                                      <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#a29bfe' }}>Steps ({msg.data.steps.length}):</div>
-                                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.7)' }}>
-                                        {msg.data.steps.slice(0, 3).map((s, j) => (
-                                          <div key={j} style={{ marginBottom: '2px' }}>{s.step}. {s.title}</div>
-                                        ))}
-                                        {msg.data.steps.length > 3 && <div style={{ color: 'rgba(252,228,214,0.5)' }}>...and {msg.data.steps.length - 3} more steps</div>}
+                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                                      <div style={{ flex: 1, minWidth: '120px', background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Melt Wax</div>
+                                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#ff6b6b' }}>{msg.data.temperatures.meltTemp}</div>
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: '120px', background: 'rgba(254,202,87,0.1)', border: '1px solid rgba(254,202,87,0.2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Add Fragrance</div>
+                                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#feca57' }}>{msg.data.temperatures.addFragrance}</div>
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: '120px', background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Pour</div>
+                                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#55efc4' }}>{msg.data.temperatures.pourTemp}</div>
                                       </div>
                                     </div>
                                   )}
+
+                                  {/* Steps - Full display */}
+                                  {msg.data.steps && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#a29bfe', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <ClipboardList size={16} /> Step-by-Step Instructions
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {msg.data.steps.map((s, j) => (
+                                          <div key={j} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '14px', borderLeft: '3px solid #a29bfe' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#1a0a1e' }}>{s.step}</span>
+                                                <span style={{ fontSize: '15px', fontWeight: 600 }}>{s.title}</span>
+                                              </div>
+                                              {s.duration && <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '10px' }}>{s.duration}</span>}
+                                            </div>
+                                            <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.5', margin: '0 0 0 36px' }}>{s.description}</p>
+                                            {s.tips && s.tips.length > 0 && (
+                                              <div style={{ marginTop: '8px', marginLeft: '36px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {s.tips.map((tip, ti) => (
+                                                  <span key={ti} style={{ fontSize: '11px', color: '#55efc4', background: 'rgba(85,239,196,0.1)', padding: '3px 8px', borderRadius: '4px' }}>💡 {tip}</span>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Warnings & Pro Tips */}
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    {msg.data.warnings && msg.data.warnings.length > 0 && (
+                                      <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '12px', padding: '14px' }}>
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff6b6b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <AlertTriangle size={14} /> Safety Warnings
+                                        </div>
+                                        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
+                                          {msg.data.warnings.map((w, wi) => <li key={wi}>{w}</li>)}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {msg.data.proTips && msg.data.proTips.length > 0 && (
+                                      <div style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '12px', padding: '14px' }}>
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#55efc4', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <Sparkles size={14} /> Pro Tips
+                                        </div>
+                                        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'rgba(252,228,214,0.8)', lineHeight: '1.6' }}>
+                                          {msg.data.proTips.map((t, ti) => <li key={ti}>{t}</li>)}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ) : (
