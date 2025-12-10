@@ -1594,13 +1594,38 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
       let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
       // Try to parse as JSON for structured batch instructions
-      let cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       let parsedData = null;
 
-      try {
-        parsedData = JSON.parse(cleanedText);
-      } catch (parseError) {
-        // Not JSON, treat as conversational text
+      // First, try to extract JSON from markdown code blocks
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          parsedData = JSON.parse(jsonMatch[1].trim());
+        } catch (e) {
+          // Failed to parse code block content
+        }
+      }
+
+      // If no code block, try to find raw JSON object in the response
+      if (!parsedData) {
+        const jsonObjectMatch = responseText.match(/\{[\s\S]*"title"[\s\S]*"steps"[\s\S]*\}/);
+        if (jsonObjectMatch) {
+          try {
+            parsedData = JSON.parse(jsonObjectMatch[0]);
+          } catch (e) {
+            // Failed to parse
+          }
+        }
+      }
+
+      // Last resort: try parsing the whole thing after stripping markdown
+      if (!parsedData) {
+        let cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        try {
+          parsedData = JSON.parse(cleanedText);
+        } catch (e) {
+          // Not JSON, treat as conversational text
+        }
       }
 
       // Add AI response to conversation
