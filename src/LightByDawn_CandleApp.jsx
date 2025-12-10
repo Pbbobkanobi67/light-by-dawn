@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -48,16 +48,16 @@ const initialFragrances = [
 ];
 
 const initialRecipes = [
-  { id: 'RCP-001', name: 'Coastal Luxe', vibe: 'Tropical • Clean • Airy', style: 'Fresh, upscale beach house', description: 'A luxury coastal fragrance blending airy ocean breeze with soft tropical fruit, bright lime, and delicate jasmine.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Ocean Breeze', type: 'FO', percent: 55 }, { fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 25 }, { fragrance: 'Lime', type: 'EO', percent: 10 }, { fragrance: 'Petitgrain', type: 'EO', percent: 5 }, { fragrance: 'Jasmine', type: 'EO', percent: 5 }] },
-  { id: 'RCP-002', name: 'Sunset Colada', vibe: 'Tropical • Fruity • Smooth', style: 'Vacation sunset cocktail', description: 'Bright and sunny tropical fruit softened with creamy vanilla and citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 60 }, { fragrance: 'Vanilla', type: 'EO', percent: 15 }, { fragrance: 'Lime', type: 'EO', percent: 15 }, { fragrance: 'Orange', type: 'EO', percent: 10 }] },
-  { id: 'RCP-003', name: 'Harvest Cabin', vibe: 'Warm • Spiced • Comforting', style: 'Cozy fall evening', description: 'A welcoming fall scent with warm apple cinnamon, smooth vanilla, gentle orange, and a cedarwood base.', container: '6oz Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 6, foLoad: 10, archived: false, components: [{ fragrance: 'Apple Cinnamon', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Frankincense', type: 'EO', percent: 5 }] },
-  { id: 'RCP-004', name: 'Toes In The Sand', vibe: 'Fresh • Uplifting • Coastal', style: 'Tropical fruit meets coastal breeze', description: 'Tropical fruit meets a refreshing ocean breeze with hints of lime and gentle mint. Clean, bright, and beachy.', container: '4oz Small Tin', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', size: 4, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 55 }, { fragrance: 'Coconut Lime', type: 'FO', percent: 20 }, { fragrance: 'Eucalyptus Spearmint', type: 'EO', percent: 20 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 5 }] },
-  { id: 'RCP-005', name: 'Alpine Holiday', vibe: 'Fresh • Festive • Cozy', style: 'Christmas tree + winter citrus', description: 'A refined Christmas scent combining fresh balsam pine with creamy vanilla and bright winter citrus.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Pine', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Bergamot', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Cedar', type: 'EO', percent: 5 }] },
-  { id: 'RCP-006', name: 'Fireside Spice Latte', vibe: 'Cozy • Spiced • Sweet', style: 'Warm holiday café', description: 'Creamy pumpkin spice latte layered with caramel, vanilla, cedarwood, and a subtle hint of black pepper.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Pumpkin Spice Latte', type: 'FO', percent: 50 }, { fragrance: 'Caramel', type: 'FO', percent: 20 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 5 }, { fragrance: 'Black Pepper', type: 'FO', percent: 5 }] },
-  { id: 'RCP-007', name: 'Forbidden Vanilla Kiss', vibe: 'Romantic • Seductive • Luxury', style: 'Signature sweet-floral gourmand', description: 'A sensual, sweet-floral indulgence where creamy vanilla swirls with lush blooms and soft citrus sparkle.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Sweet Taboo', type: 'FO', percent: 48 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 35 }, { fragrance: 'Jasmine', type: 'EO', percent: 10 }, { fragrance: 'Bergamot', type: 'EO', percent: 5 }, { fragrance: 'Rose', type: 'EO', percent: 2 }] },
-  { id: 'RCP-008', name: 'Alpine Spa', vibe: 'Clean • Fresh • Cozy', style: 'Perfect winter spa scent', description: 'A clean, uplifting alpine blend that combines crisp evergreens with ocean freshness and soothing spa botanicals.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Mountain Meets Ocean', type: 'FO', percent: 40 }, { fragrance: 'Balsam Pine', type: 'EO', percent: 30 }, { fragrance: 'Eucalyptus', type: 'EO', percent: 10 }, { fragrance: 'Rosemary', type: 'EO', percent: 10 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 10 }] },
-  { id: 'RCP-009', name: 'Island Bliss', vibe: 'Tropical • Smooth • Playful', style: 'Flirty tropical fruit', description: 'A bright blend of tropical fruit, creamy island sweetness, and soft warm notes that drift across sunlit shores.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 50 }, { fragrance: 'Butt Naked', type: 'FO', percent: 30 }, { fragrance: 'Sweetest Taboo', type: 'FO', percent: 20 }] },
-  { id: 'RCP-010', name: 'Eucalyptus Spa', vibe: 'Clean • Cooling • Refreshing', style: 'Herbal aromatherapy', description: 'A refreshing blend of cool eucalyptus and crisp spearmint that opens the senses and calms the mind.', container: '9oz Straight Side Jar', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', size: 9, foLoad: 10, archived: false, components: [{ fragrance: 'Eucalyptus Spearmint', type: 'FO', percent: 100 }] },
+  { id: 'RCP-001', name: 'Coastal Luxe', vibe: 'Tropical • Clean • Airy', style: 'Fresh, upscale beach house', description: 'A luxury coastal fragrance blending airy ocean breeze with soft tropical fruit, bright lime, and delicate jasmine.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Ocean Breeze', type: 'FO', percent: 55 }, { fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 25 }, { fragrance: 'Lime', type: 'EO', percent: 10 }, { fragrance: 'Petitgrain', type: 'EO', percent: 5 }, { fragrance: 'Jasmine', type: 'EO', percent: 5 }] },
+  { id: 'RCP-002', name: 'Sunset Colada', vibe: 'Tropical • Fruity • Smooth', style: 'Vacation sunset cocktail', description: 'Bright and sunny tropical fruit softened with creamy vanilla and citrus.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 60 }, { fragrance: 'Vanilla', type: 'EO', percent: 15 }, { fragrance: 'Lime', type: 'EO', percent: 15 }, { fragrance: 'Orange', type: 'EO', percent: 10 }] },
+  { id: 'RCP-003', name: 'Harvest Cabin', vibe: 'Warm • Spiced • Comforting', style: 'Cozy fall evening', description: 'A welcoming fall scent with warm apple cinnamon, smooth vanilla, gentle orange, and a cedarwood base.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Apple Cinnamon', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Frankincense', type: 'EO', percent: 5 }] },
+  { id: 'RCP-004', name: 'Toes In The Sand', vibe: 'Fresh • Uplifting • Coastal', style: 'Tropical fruit meets coastal breeze', description: 'Tropical fruit meets a refreshing ocean breeze with hints of lime and gentle mint. Clean, bright, and beachy.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-10 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 55 }, { fragrance: 'Coconut Lime', type: 'FO', percent: 20 }, { fragrance: 'Eucalyptus Spearmint', type: 'EO', percent: 20 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 5 }] },
+  { id: 'RCP-005', name: 'Alpine Holiday', vibe: 'Fresh • Festive • Cozy', style: 'Christmas tree + winter citrus', description: 'A refined Christmas scent combining fresh balsam pine with creamy vanilla and bright winter citrus.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Pine', type: 'FO', percent: 55 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Bergamot', type: 'EO', percent: 10 }, { fragrance: 'Orange', type: 'EO', percent: 10 }, { fragrance: 'Cedar', type: 'EO', percent: 5 }] },
+  { id: 'RCP-006', name: 'Fireside Spice Latte', vibe: 'Cozy • Spiced • Sweet', style: 'Warm holiday café', description: 'Creamy pumpkin spice latte layered with caramel, vanilla, cedarwood, and a subtle hint of black pepper.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Pumpkin Spice Latte', type: 'FO', percent: 50 }, { fragrance: 'Caramel', type: 'FO', percent: 20 }, { fragrance: 'Vanilla', type: 'EO', percent: 20 }, { fragrance: 'Cedarwood', type: 'EO', percent: 5 }, { fragrance: 'Black Pepper', type: 'FO', percent: 5 }] },
+  { id: 'RCP-007', name: 'Forbidden Vanilla Kiss', vibe: 'Romantic • Seductive • Luxury', style: 'Signature sweet-floral gourmand', description: 'A sensual, sweet-floral indulgence where creamy vanilla swirls with lush blooms and soft citrus sparkle.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Sweet Taboo', type: 'FO', percent: 48 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 35 }, { fragrance: 'Jasmine', type: 'EO', percent: 10 }, { fragrance: 'Bergamot', type: 'EO', percent: 5 }, { fragrance: 'Rose', type: 'EO', percent: 2 }] },
+  { id: 'RCP-008', name: 'Alpine Spa', vibe: 'Clean • Fresh • Cozy', style: 'Perfect winter spa scent', description: 'A clean, uplifting alpine blend that combines crisp evergreens with ocean freshness and soothing spa botanicals.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Mountain Meets Ocean', type: 'FO', percent: 40 }, { fragrance: 'Balsam Pine', type: 'EO', percent: 30 }, { fragrance: 'Eucalyptus', type: 'EO', percent: 10 }, { fragrance: 'Rosemary', type: 'EO', percent: 10 }, { fragrance: 'Very Vanilla', type: 'FO', percent: 10 }] },
+  { id: 'RCP-009', name: 'Island Bliss', vibe: 'Tropical • Smooth • Playful', style: 'Flirty tropical fruit', description: 'A bright blend of tropical fruit, creamy island sweetness, and soft warm notes that drift across sunlit shores.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Jamaican Me Crazy', type: 'FO', percent: 50 }, { fragrance: 'Butt Naked', type: 'FO', percent: 30 }, { fragrance: 'Sweetest Taboo', type: 'FO', percent: 20 }] },
+  { id: 'RCP-010', name: 'Eucalyptus Spa', vibe: 'Clean • Cooling • Refreshing', style: 'Herbal aromatherapy', description: 'A refreshing blend of cool eucalyptus and crisp spearmint that opens the senses and calms the mind.', wax: 'Golden Brands 464 Soy Wax', wick: 'CD-18 Wicks', foLoad: 10, archived: false, components: [{ fragrance: 'Eucalyptus Spearmint', type: 'FO', percent: 100 }] },
 ];
 
 const initialBatchHistory = [];
@@ -73,6 +73,7 @@ const navItems = [
   { id: 'pricing', label: 'Pricing', icon: DollarSign },
   { id: 'shopping', label: 'Shopping List', icon: ShoppingCart },
   { id: 'history', label: 'Batch History', icon: History },
+  { id: 'admin', label: 'Admin', icon: Settings },
 ];
 
 const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
@@ -137,9 +138,50 @@ export default function CandleBusinessApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [materials, setMaterials] = useState(() => loadFromStorage('materials', initialMaterials));
   const [fragrances, setFragrances] = useState(() => loadFromStorage('fragrances', initialFragrances));
-  const [recipes, setRecipes] = useState(() => loadFromStorage('recipes', initialRecipes));
+  const [recipes, setRecipes] = useState(() => {
+    // Load recipes and migrate: remove container/size fields (now selected at batch time)
+    const loaded = loadFromStorage('recipes', initialRecipes);
+    return loaded.map(r => {
+      const { container, size, ...rest } = r;
+      return rest;
+    });
+  });
   const [batchHistory, setBatchHistory] = useState(() => loadFromStorage('batchHistory', initialBatchHistory));
-  
+
+  // App defaults/settings
+  const defaultAppSettings = {
+    // Batch Builder Defaults
+    defaultCandleSize: 9,
+    defaultQuantity: 12,
+    defaultFoLoad: 10, // percentage
+    defaultWax: '',
+    defaultContainer: '',
+    defaultWick: '',
+    defaultLabel: '',
+    defaultPackaging: '',
+    // Pricing Defaults
+    defaultOverheadPerCandle: 0.50,
+    defaultLaborCostPerCandle: 1.00,
+    defaultProfitMarginTarget: 50, // percentage
+    // Recipe Defaults
+    defaultRecipeFoLoad: 10, // percentage
+    defaultDyeUnit: 'drops',
+    // Display Preferences
+    defaultRecipeView: 'grid',
+    defaultFragranceView: 'grid',
+    showArchivedByDefault: false,
+    // Behavior Settings
+    returnToFragrancesOnRecipeCancel: true,
+    // Business Settings
+    businessName: 'Light By Dawn',
+    currencySymbol: '$',
+    // Label pricing tiers
+    smallLabelCost: 0.08, // 4oz and under
+    mediumLabelCost: 0.10, // 5-6oz
+    largeLabelCost: 0.12, // 7oz+
+  };
+  const [appDefaults, setAppDefaults] = useState(() => loadFromStorage('appDefaults', defaultAppSettings));
+
   // Multi-batch builder state
   const [batchList, setBatchList] = useState(() => loadFromStorage('batchList', []));
   const [currentBatch, setCurrentBatch] = useState({
@@ -164,6 +206,11 @@ export default function CandleBusinessApp() {
 
   // Modal states
   const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeModalPos, setRecipeModalPos] = useState({ x: null, y: null }); // null = centered
+  const [recipeModalSize, setRecipeModalSize] = useState({ width: 700, height: null }); // null = auto height
+  const [isDraggingModal, setIsDraggingModal] = useState(false);
+  const [isResizingModal, setIsResizingModal] = useState(false);
+  const [modalDragOffset, setModalDragOffset] = useState({ x: 0, y: 0 });
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFragranceModal, setShowFragranceModal] = useState(false);
   const [showBatchInstructionsModal, setShowBatchInstructionsModal] = useState(false);
@@ -173,7 +220,7 @@ export default function CandleBusinessApp() {
   const [editingFragrance, setEditingFragrance] = useState(null);
 
   // Form states
-  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
@@ -218,9 +265,11 @@ export default function CandleBusinessApp() {
   const [instructionsConversation, setInstructionsConversation] = useState([]); // Full conversation history
   const [currentChatId, setCurrentChatId] = useState(null); // Track which saved chat is loaded
   const [viewingInstruction, setViewingInstruction] = useState(null);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); // { type: 'instruction'|'chat', id, title }
   const [converterValue, setConverterValue] = useState('');
   const [converterUnit, setConverterUnit] = useState('oz'); // 'oz', 'ml', 'g'
   const conversationEndRef = React.useRef(null); // For auto-scroll
+  const [pendingAutoPrompt, setPendingAutoPrompt] = useState(null); // Auto-trigger AI when navigating from Batch Builder
 
   // Supabase sync state
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -359,6 +408,10 @@ export default function CandleBusinessApp() {
   }, [batchList, safeSyncToSupabase]);
 
   useEffect(() => {
+    saveToStorage('appDefaults', appDefaults);
+  }, [appDefaults]);
+
+  useEffect(() => {
     saveToStorage('savedInstructions', savedInstructions);
     safeSyncToSupabase('saved_instructions', savedInstructions, 'savedInstructions');
   }, [savedInstructions, safeSyncToSupabase]);
@@ -374,6 +427,14 @@ export default function CandleBusinessApp() {
       conversationEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [instructionsConversation, instructionsAiLoading]);
+
+  // Auto-trigger AI when navigating from Batch Builder
+  useEffect(() => {
+    if (pendingAutoPrompt && activeTab === 'instructions' && !instructionsAiLoading) {
+      generateBatchInstructions(pendingAutoPrompt);
+      setPendingAutoPrompt(null);
+    }
+  }, [pendingAutoPrompt, activeTab, instructionsAiLoading]);
 
   // Materials page state
   const [materialView, setMaterialView] = useState('table'); // 'grid', 'list', 'table'
@@ -458,30 +519,30 @@ export default function CandleBusinessApp() {
   const effectiveAvgFoCost = currentBatch.avgFoCost > 0 ? currentBatch.avgFoCost : calculatedAvgFoCost;
   const currentCalc = calculateBatch({ ...currentBatch, avgFoCost: effectiveAvgFoCost });
 
-  // Pricing engine calculation based on selected recipe
+  // Pricing engine calculation based on selected recipe (using 9oz as default)
   const pricingCalc = useMemo(() => {
     const recipe = recipes.find(r => r.name === pricingRecipe);
     if (!recipe) return { totalCostPerCandle: 0, profitPerCandle: 0, retailPrice: 0 };
-    
-    const size = recipe.size || 9;
+
+    const size = 9; // Default size since recipes no longer have container/size
     const foLoad = (recipe.foLoad || 10) / 100;
     const waxCostPerOz = 0.206;
-    const containerCost = size <= 4 ? 1.17 : size <= 6 ? 1.50 : 2.00;
+    const containerCost = 2.00; // 9oz jar cost
     const wickCost = 0.13;
     const labelCost = 0.03;
     const packagingCost = 0.74;
     const avgFoCost = 1.97;
-    const retailPrice = size <= 4 ? 14.00 : size <= 6 ? 18.00 : 24.00;
-    
+    const retailPrice = 24.00; // 9oz price
+
     const waxPerCandle = size * (1 - foLoad);
     const foPerCandle = size * foLoad;
     const waxCost = waxPerCandle * waxCostPerOz;
     const foCost = foPerCandle * avgFoCost;
     const totalCostPerCandle = waxCost + foCost + containerCost + wickCost + labelCost + packagingCost;
     const profitPerCandle = retailPrice - totalCostPerCandle;
-    
+
     console.log('Pricing calc for:', pricingRecipe, 'Size:', size, 'Cost:', totalCostPerCandle);
-    
+
     return {
       totalCostPerCandle,
       profitPerCandle,
@@ -511,12 +572,12 @@ export default function CandleBusinessApp() {
       if (!recipe) return;
 
       const calc = calculateBatch(batch);
-      const containerKey = recipe.container;
+      const containerKey = batch.container || 'Container';
 
       if (!byRecipe[batch.recipe]) {
         byRecipe[batch.recipe] = {
           recipe: batch.recipe,
-          container: recipe.container,
+          container: batch.container,
           size: batch.size,
           quantity: 0,
           waxOz: 0,
@@ -582,8 +643,7 @@ export default function CandleBusinessApp() {
   }, [materials, fragrances]);
 
   // Calculate what materials a recipe needs for a given quantity
-  const calculateRecipeMaterials = (recipe, quantity) => {
-    const size = recipe.size;
+  const calculateRecipeMaterials = (recipe, quantity, size = 9) => {
     const foLoad = recipe.foLoad / 100;
     const waxPerCandle = size * (1 - foLoad);
     const foPerCandle = size * foLoad;
@@ -606,19 +666,19 @@ export default function CandleBusinessApp() {
   };
 
   // Check if we have enough materials for a recipe
-  const canMakeRecipe = (recipe, quantity = 12) => {
-    const needs = calculateRecipeMaterials(recipe, quantity);
-    
+  const canMakeRecipe = (recipe, quantity = 12, size = 9, containerName = '') => {
+    const needs = calculateRecipeMaterials(recipe, quantity, size);
+
     // Check wax (convert oz needed to lbs for comparison)
     const waxLbsNeeded = needs.wax / 16;
     const totalWaxOnHand = materials
       .filter(m => m.category === 'Wax')
       .reduce((sum, m) => sum + m.qtyOnHand, 0);
-    
+
     if (totalWaxOnHand < waxLbsNeeded) {
       return { canMake: false, reason: `Need ${waxLbsNeeded.toFixed(2)} lbs wax, have ${totalWaxOnHand} lbs`, maxQty: Math.floor((totalWaxOnHand * 16) / (needs.wax / quantity)) };
     }
-    
+
     // Check fragrances
     for (const frag of needs.fragranceBreakdown) {
       const fragInStock = fragrances.find(f => f.name === frag.name);
@@ -628,21 +688,22 @@ export default function CandleBusinessApp() {
         return { canMake: false, reason: `Need ${frag.oz.toFixed(2)} oz ${frag.name}, have ${available} oz`, maxQty: maxFromThis };
       }
     }
-    
-    // Check containers based on recipe container type
-    const containerName = recipe.container;
-    const container = materials.find(m => m.name === containerName);
-    if (!container || container.qtyOnHand < quantity) {
-      const available = container?.qtyOnHand || 0;
-      return { canMake: false, reason: `Need ${quantity} containers, have ${available}`, maxQty: available };
+
+    // Check containers if specified
+    if (containerName) {
+      const container = materials.find(m => m.name === containerName);
+      if (!container || container.qtyOnHand < quantity) {
+        const available = container?.qtyOnHand || 0;
+        return { canMake: false, reason: `Need ${quantity} containers, have ${available}`, maxQty: available };
+      }
     }
-    
+
     // Check wicks
     const totalWicks = materials.filter(m => m.category === 'Wick').reduce((sum, m) => sum + m.qtyOnHand, 0);
     if (totalWicks < quantity) {
       return { canMake: false, reason: `Need ${quantity} wicks, have ${totalWicks}`, maxQty: totalWicks };
     }
-    
+
     return { canMake: true, reason: 'Ready to make!', maxQty: quantity };
   };
 
@@ -650,7 +711,7 @@ export default function CandleBusinessApp() {
   const currentBatchStock = useMemo(() => {
     if (!selectedRecipe) return { canMake: true, shortages: [], inStock: [], allNeeds: [] };
     const quantity = currentBatch.quantity;
-    const needs = calculateRecipeMaterials(selectedRecipe, quantity);
+    const needs = calculateRecipeMaterials(selectedRecipe, quantity, currentBatch.size);
     const shortages = [];
     const inStock = [];
     const allNeeds = [];
@@ -668,7 +729,7 @@ export default function CandleBusinessApp() {
     }
 
     // Check container
-    const containerName = currentBatch.container || selectedRecipe.container || 'Container';
+    const containerName = currentBatch.container || 'Container';
     const container = materials.find(m => m.name === containerName);
     const containerHave = container?.qtyOnHand || 0;
     allNeeds.push({ name: containerName, category: 'Container', needed: quantity, have: containerHave, unit: 'pcs' });
@@ -783,23 +844,24 @@ export default function CandleBusinessApp() {
     return { totalNeeds: Object.values(totalNeeds), shortages, inStock, canMakeAll: shortages.length === 0 };
   }, [batchList, recipes, materials, fragrances]);
 
-  // What can I make - calculate for all recipes
+  // What can I make - calculate for all recipes (using 9oz as default size)
   const whatCanIMake = useMemo(() => {
+    const defaultSize = 9;
     return recipes.map(recipe => {
-      const check12 = canMakeRecipe(recipe, 12);
-      const check24 = canMakeRecipe(recipe, 24);
-      const check6 = canMakeRecipe(recipe, 6);
-      
+      const check12 = canMakeRecipe(recipe, 12, defaultSize);
+      const check24 = canMakeRecipe(recipe, 24, defaultSize);
+      const check6 = canMakeRecipe(recipe, 6, defaultSize);
+
       // Find max we can make
       let maxQty = 0;
       for (let q = 1; q <= 100; q++) {
-        if (canMakeRecipe(recipe, q).canMake) {
+        if (canMakeRecipe(recipe, q, defaultSize).canMake) {
           maxQty = q;
         } else {
           break;
         }
       }
-      
+
       return {
         recipe,
         canMake6: check6.canMake,
@@ -840,17 +902,6 @@ export default function CandleBusinessApp() {
     switch (recipeSort) {
       case 'name':
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case 'size':
-        return sorted.sort((a, b) => b.size - a.size);
-      case 'size-asc':
-        return sorted.sort((a, b) => a.size - b.size);
-      case 'profit':
-        // Calculate profit for sorting
-        return sorted.sort((a, b) => {
-          const profitA = (a.size === 4 ? 14 : a.size === 6 ? 18 : 24) * 0.6; // rough profit estimate
-          const profitB = (b.size === 4 ? 14 : b.size === 6 ? 18 : 24) * 0.6;
-          return profitB - profitA;
-        });
       case 'canMake':
         // Sort by what we can make most of
         return sorted.sort((a, b) => {
@@ -899,7 +950,7 @@ export default function CandleBusinessApp() {
     
     // Deduct containers
     setMaterials(prev => prev.map(m => {
-      if (m.name === recipe.container) {
+      if (m.name === batch.container) {
         return { ...m, qtyOnHand: Math.max(0, m.qtyOnHand - batch.quantity) };
       }
       return m;
@@ -993,16 +1044,26 @@ export default function CandleBusinessApp() {
 
   const resetCurrentBatch = () => {
     const firstRecipe = recipes[0];
+    // Get material costs from defaults
+    const defaultWaxMat = materials.find(m => m.name === appDefaults.defaultWax);
+    const defaultContainerMat = materials.find(m => m.name === appDefaults.defaultContainer);
+    const defaultWickMat = materials.find(m => m.name === appDefaults.defaultWick);
+
     setCurrentBatch({
       recipe: firstRecipe?.name || '',
-      quantity: 12,
-      size: firstRecipe?.size || 9,
-      foLoad: (firstRecipe?.foLoad || 10) / 100,
-      waxCostPerOz: 0.206,
-      containerCost: 2.00,
-      wickCost: 0.13,
-      labelCost: 0.03,
-      packagingCost: 0.74,
+      quantity: appDefaults.defaultQuantity || 12,
+      size: appDefaults.defaultCandleSize || 9,
+      foLoad: (appDefaults.defaultFoLoad || 10) / 100,
+      wax: appDefaults.defaultWax || '',
+      container: appDefaults.defaultContainer || '',
+      wick: appDefaults.defaultWick || '',
+      label: appDefaults.defaultLabel || '',
+      packaging: appDefaults.defaultPackaging || '',
+      waxCostPerOz: defaultWaxMat ? Math.round(defaultWaxMat.packageCost / defaultWaxMat.packageSize / 16 * 100) / 100 : 0,
+      containerCost: defaultContainerMat ? Math.round(defaultContainerMat.packageCost / defaultContainerMat.packageSize * 100) / 100 : 0,
+      wickCost: defaultWickMat ? Math.round(defaultWickMat.packageCost / defaultWickMat.packageSize * 100) / 100 : 0,
+      labelCost: appDefaults.defaultLabel === 'standard-vinyl' ? appDefaults.largeLabelCost : 0,
+      packagingCost: 0,
       avgFoCost: 1.97,
       retailPrice: 24.00,
     });
@@ -1228,15 +1289,86 @@ export default function CandleBusinessApp() {
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
-    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }] });
+    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: appDefaults.defaultRecipeFoLoad || 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [] });
+    setRecipeModalPos({ x: null, y: null }); // Reset to centered
+    setRecipeModalSize({ width: 700, height: null }); // Reset size
     setShowRecipeModal(true);
   };
 
   const openEditRecipe = (recipe) => {
     setEditingRecipe(recipe.id);
-    setRecipeForm({ ...recipe, components: [...recipe.components] });
+    setRecipeForm({ ...recipe, components: [...recipe.components], dyes: [...(recipe.dyes || [])] });
+    setRecipeModalPos({ x: null, y: null }); // Reset to centered
+    setRecipeModalSize({ width: 700, height: null }); // Reset size
     setShowRecipeModal(true);
   };
+
+  // Recipe modal drag handlers
+  const handleModalDragStart = (e) => {
+    if (e.target.closest('input, select, textarea, button')) return;
+    e.preventDefault();
+    const modal = e.currentTarget.parentElement;
+    const rect = modal.getBoundingClientRect();
+    setModalDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setIsDraggingModal(true);
+  };
+
+  const handleModalDrag = useCallback((e) => {
+    if (!isDraggingModal) return;
+    e.preventDefault();
+    const newX = e.clientX - modalDragOffset.x;
+    const newY = e.clientY - modalDragOffset.y;
+    setRecipeModalPos({ x: Math.max(0, newX), y: Math.max(0, newY) });
+  }, [isDraggingModal, modalDragOffset]);
+
+  const handleModalDragEnd = useCallback(() => {
+    setIsDraggingModal(false);
+  }, []);
+
+  // Recipe modal resize handlers
+  const handleModalResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingModal(true);
+  };
+
+  const handleModalResize = useCallback((e) => {
+    if (!isResizingModal) return;
+    e.preventDefault();
+    const modal = document.getElementById('recipe-modal');
+    if (!modal) return;
+    const rect = modal.getBoundingClientRect();
+    const newWidth = Math.max(400, e.clientX - rect.left + 10);
+    const newHeight = Math.max(300, e.clientY - rect.top + 10);
+    setRecipeModalSize({ width: newWidth, height: newHeight });
+  }, [isResizingModal]);
+
+  const handleModalResizeEnd = useCallback(() => {
+    setIsResizingModal(false);
+  }, []);
+
+  // Add global mouse event listeners for drag/resize
+  React.useEffect(() => {
+    if (isDraggingModal) {
+      window.addEventListener('mousemove', handleModalDrag);
+      window.addEventListener('mouseup', handleModalDragEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleModalDrag);
+        window.removeEventListener('mouseup', handleModalDragEnd);
+      };
+    }
+  }, [isDraggingModal, handleModalDrag, handleModalDragEnd]);
+
+  React.useEffect(() => {
+    if (isResizingModal) {
+      window.addEventListener('mousemove', handleModalResize);
+      window.addEventListener('mouseup', handleModalResizeEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleModalResize);
+        window.removeEventListener('mouseup', handleModalResizeEnd);
+      };
+    }
+  }, [isResizingModal, handleModalResize, handleModalResizeEnd]);
 
   const saveRecipe = () => {
     const totalPercent = recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0);
@@ -1252,6 +1384,14 @@ export default function CandleBusinessApp() {
     setShowRecipeModal(false);
   };
 
+  // Handle recipe modal cancel - optionally return to fragrances
+  const cancelRecipeModal = () => {
+    setShowRecipeModal(false);
+    if (appDefaults.returnToFragrancesOnRecipeCancel && selectedFragrances.length > 0) {
+      setActiveTab('fragrances');
+    }
+  };
+
   const deleteRecipe = (id, e) => {
     if (e) e.stopPropagation();
     setRecipes(recipes.filter(r => r.id !== id));
@@ -1265,7 +1405,7 @@ export default function CandleBusinessApp() {
   const copyRecipe = (recipe, e) => {
     if (e) e.stopPropagation();
     setEditingRecipe(null);
-    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components] });
+    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components], dyes: [...(recipe.dyes || [])] });
     setShowRecipeModal(true);
   };
 
@@ -1280,32 +1420,58 @@ export default function CandleBusinessApp() {
   // Create recipe from selected fragrances
   const createRecipeFromSelection = () => {
     if (selectedFragrances.length < 2) return;
-    
-    // Get fragrance details and distribute percentages evenly
-    const evenPercent = Math.floor(100 / selectedFragrances.length);
-    const remainder = 100 - (evenPercent * selectedFragrances.length);
-    
-    const components = selectedFragrances.map((fragId, idx) => {
-      const frag = fragrances.find(f => f.id === fragId);
-      return {
-        fragrance: frag?.name || '',
-        type: frag?.type || 'FO',
-        percent: idx === 0 ? evenPercent + remainder : evenPercent // Give remainder to first component
-      };
-    });
-    
+
+    // Check if we have AI-suggested ratios
+    const aiData = aiResponse?.data;
+
+    // Get fragrance details and use AI ratios if available, otherwise distribute evenly
+    let components;
+
+    if (aiData?.ratios?.length > 0) {
+      // Use AI-suggested ratios
+      components = selectedFragrances.map(fragId => {
+        const frag = fragrances.find(f => f.id === fragId);
+        const fragName = frag?.name || '';
+        // Find matching ratio from AI response
+        const aiRatio = aiData.ratios.find(r => r.fragrance === fragName);
+        return {
+          fragrance: fragName,
+          type: frag?.type || 'FO',
+          percent: aiRatio?.percent || Math.floor(100 / selectedFragrances.length)
+        };
+      });
+
+      // Ensure percentages total 100
+      const total = components.reduce((sum, c) => sum + c.percent, 0);
+      if (total !== 100 && components.length > 0) {
+        components[0].percent += (100 - total);
+      }
+    } else {
+      // Distribute percentages evenly
+      const evenPercent = Math.floor(100 / selectedFragrances.length);
+      const remainder = 100 - (evenPercent * selectedFragrances.length);
+
+      components = selectedFragrances.map((fragId, idx) => {
+        const frag = fragrances.find(f => f.id === fragId);
+        return {
+          fragrance: frag?.name || '',
+          type: frag?.type || 'FO',
+          percent: idx === 0 ? evenPercent + remainder : evenPercent
+        };
+      });
+    }
+
     setEditingRecipe(null);
     setRecipeForm({
-      name: '',
-      vibe: '',
-      style: '',
-      description: '',
-      container: '9oz Straight Side Jar',
+      name: '', // Leave blank for user to fill in
+      vibe: aiData?.vibe || '',
+      style: aiData?.style || '',
+      description: aiData?.description || '',
       wax: 'Golden Brands 464 Soy Wax',
       wick: 'CD-18 Wicks',
-      size: 9,
       foLoad: 10,
-      components
+      components,
+      dyes: []
     });
     setShowRecipeModal(true);
     setActiveTab('recipes');
@@ -1359,6 +1525,12 @@ export default function CandleBusinessApp() {
     setShowAiPanel(true);
     setAiResponse(null);
 
+    // Build fragrance list with names for the prompt
+    const fragranceNames = selectedFragrances.map(id => {
+      const f = fragrances.find(fr => fr.id === id);
+      return f?.name || '';
+    }).filter(Boolean);
+
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: "POST",
@@ -1368,15 +1540,25 @@ export default function CandleBusinessApp() {
             role: "user",
             parts: [{ text: `You are an expert candle maker and fragrance blender. I'm creating a candle and want to combine these fragrances: ${selectedFragranceDetails.join(', ')}.
 
-Please provide:
-1. **Compatibility Analysis**: How well do these scents work together?
-2. **Suggested Ratio**: Recommend specific percentages for each fragrance (must total 100%)
-3. **Scent Profile**: Describe what the final blend will smell like
-4. **Mood/Vibe**: What atmosphere does this create?
-5. **Season/Occasion**: When is this blend best suited for?
-6. **Recipe Name Suggestions**: Give 2-3 creative names for this blend
+Please provide your analysis in this EXACT JSON format (no markdown, pure JSON):
+{
+  "compatibility": "How well do these scents work together (1-2 sentences)",
+  "ratios": [
+    { "fragrance": "${fragranceNames[0] || ''}", "percent": 50 },
+    { "fragrance": "${fragranceNames[1] || ''}", "percent": 30 }
+  ],
+  "scentProfile": "What the final blend will smell like (1-2 sentences)",
+  "vibe": "3-4 words separated by • describing the mood (e.g., Warm • Cozy • Inviting)",
+  "style": "Brief style description (e.g., Holiday comfort, Spa retreat)",
+  "description": "2-3 sentence description of this candle blend",
+  "season": "Best season/occasion for this blend",
+  "nameIdeas": ["Creative Name 1", "Creative Name 2", "Creative Name 3"]
+}
 
-Keep your response concise but helpful. Format with clear sections.` }]
+IMPORTANT:
+- The "ratios" array must include ALL ${fragranceNames.length} fragrances with exact names: ${fragranceNames.join(', ')}
+- Percentages must total exactly 100%
+- Return ONLY the JSON object, no other text` }]
           }]
         })
       });
@@ -1387,11 +1569,43 @@ Keep your response concise but helpful. Format with clear sections.` }]
       }
 
       const data = await response.json();
-      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
-      setAiResponse(responseText);
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Try to parse as JSON
+      let parsedResponse = null;
+      try {
+        // Try to extract JSON from response (handle markdown code blocks)
+        const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/```\s*([\s\S]*?)\s*```/);
+        const jsonStr = jsonMatch ? jsonMatch[1].trim() : responseText.trim();
+        parsedResponse = JSON.parse(jsonStr);
+      } catch (e) {
+        console.log('Failed to parse AI response as JSON, using text format');
+      }
+
+      // Store both the parsed data and display text
+      if (parsedResponse) {
+        // Format for display
+        let displayText = `**Compatibility:** ${parsedResponse.compatibility}\n\n`;
+        displayText += `**Suggested Ratios:**\n`;
+        parsedResponse.ratios?.forEach(r => {
+          displayText += `• ${r.fragrance}: ${r.percent}%\n`;
+        });
+        displayText += `\n**Scent Profile:** ${parsedResponse.scentProfile}\n`;
+        displayText += `\n**Vibe:** ${parsedResponse.vibe}\n`;
+        displayText += `\n**Style:** ${parsedResponse.style}\n`;
+        displayText += `\n**Description:** ${parsedResponse.description}\n`;
+        displayText += `\n**Best For:** ${parsedResponse.season}\n`;
+        displayText += `\n**Name Ideas:** ${parsedResponse.nameIdeas?.join(', ') || 'N/A'}`;
+
+        setAiResponse(displayText);
+        // Store parsed data for recipe creation
+        setAiResponse(prev => ({ text: displayText, data: parsedResponse }));
+      } else {
+        setAiResponse({ text: responseText, data: null });
+      }
     } catch (error) {
       console.error("Error getting AI advice:", error);
-      setAiResponse(`Error: ${error.message}\n\nPlease check your API key is valid.`);
+      setAiResponse({ text: `Error: ${error.message}\n\nPlease check your API key is valid.`, data: null });
     } finally {
       setAiLoading(false);
     }
@@ -1515,7 +1729,7 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
       }),
       recipes: recipes.filter(r => !r.archived).map(r => ({
         name: r.name, vibe: r.vibe, style: r.style, description: r.description,
-        container: r.container, wax: r.wax, wick: r.wick, size: r.size, foLoad: r.foLoad,
+        wax: r.wax, wick: r.wick, foLoad: r.foLoad,
         components: r.components
       }))
     };
@@ -1525,8 +1739,12 @@ Be concise, friendly, and helpful. When suggesting recipes or products, referenc
 You have access to their inventory and recipes:
 ${JSON.stringify(inventoryContext, null, 2)}
 
+IMPORTANT: Recipes define only the fragrance blend (components), wax type, wick type, and fragrance load percentage. They do NOT specify a container or size - the user specifies what size/container they want when requesting batch instructions. Any recipe can be made in any container size.
+
 RESPONSE FORMAT:
-- For batch instruction requests (e.g., "How do I make 12 candles"), respond with a JSON object in the EXACT format shown below
+- For batch instruction requests (e.g., "How do I make 12 4oz candles" or "make 8 Christmas Orchard 6oz"), respond with a JSON object in the EXACT format shown below
+- The user specifies the quantity and size in their request - use those values
+- If the user doesn't specify a size, default to 9oz
 - For follow-up questions, modifications, or general questions, respond in plain conversational text
 - Be helpful, friendly, and knowledgeable about candle making
 
@@ -1722,6 +1940,176 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
     }
   };
 
+  // Print saved instruction
+  const printInstruction = (instruction) => {
+    const data = instruction.data;
+    const printWindow = window.open('', '_blank');
+
+    let ingredientsHtml = '';
+    if (data?.ingredients?.length > 0) {
+      ingredientsHtml = `
+        <h2>Ingredients</h2>
+        <table>
+          <tr><th>Item</th><th>Amount</th><th>Notes</th></tr>
+          ${data.ingredients.map(i => `<tr><td>${i.item}</td><td>${i.amount}</td><td>${i.notes || ''}</td></tr>`).join('')}
+        </table>
+      `;
+    }
+
+    let fragrancesHtml = '';
+    if (data?.fragranceBreakdown?.length > 0) {
+      fragrancesHtml = `
+        <h2>Fragrance Breakdown</h2>
+        <table>
+          <tr><th>Fragrance</th><th>%</th><th>Amount (oz)</th></tr>
+          ${data.fragranceBreakdown.map(f => `<tr><td>${f.name}</td><td>${f.percent}%</td><td>${f.amountOz} oz</td></tr>`).join('')}
+        </table>
+      `;
+    }
+
+    let suppliesHtml = '';
+    if (data?.supplies?.length > 0) {
+      suppliesHtml = `
+        <h2>Supplies</h2>
+        <table>
+          <tr><th>Item</th><th>Qty</th><th>Notes</th></tr>
+          ${data.supplies.map(s => `<tr><td>${s.item}</td><td>${s.quantity}</td><td>${s.notes || ''}</td></tr>`).join('')}
+        </table>
+      `;
+    }
+
+    let stepsHtml = '';
+    if (data?.steps?.length > 0) {
+      stepsHtml = `
+        <h2>Instructions</h2>
+        ${data.steps.map(s => `
+          <div class="step">
+            <div class="step-header">
+              <span class="step-num">${s.step}</span>
+              <span class="step-title">${s.title}</span>
+              <span class="step-duration">${s.duration || ''}</span>
+            </div>
+            <p>${s.description}</p>
+            ${s.tips?.length > 0 ? `<ul class="tips">${s.tips.map(t => `<li>${t}</li>`).join('')}</ul>` : ''}
+          </div>
+        `).join('')}
+      `;
+    }
+
+    let warningsHtml = '';
+    if (data?.warnings?.length > 0) {
+      warningsHtml = `
+        <h2>⚠️ Safety Warnings</h2>
+        <ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
+      `;
+    }
+
+    let proTipsHtml = '';
+    if (data?.proTips?.length > 0) {
+      proTipsHtml = `
+        <h2>💡 Pro Tips</h2>
+        <ul>${data.proTips.map(t => `<li>${t}</li>`).join('')}</ul>
+      `;
+    }
+
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>${instruction.title} - Light By Dawn</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #1a0a1e; max-width: 800px; margin: 0 auto; }
+          h1 { font-size: 28px; margin-bottom: 4px; border-bottom: 3px solid #1a0a1e; padding-bottom: 8px; }
+          .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+          h2 { font-size: 18px; margin: 24px 0 12px; border-bottom: 2px solid #ddd; padding-bottom: 4px; }
+          .meta { display: flex; gap: 24px; margin-bottom: 20px; padding: 16px; background: #f8f8f8; border-radius: 8px; }
+          .meta-item { text-align: center; }
+          .meta-label { font-size: 11px; color: #666; text-transform: uppercase; }
+          .meta-value { font-size: 24px; font-weight: 700; }
+          table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #f5f5f5; font-size: 12px; text-transform: uppercase; }
+          .step { margin: 16px 0; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+          .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+          .step-num { width: 28px; height: 28px; background: #1a0a1e; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+          .step-title { font-weight: 600; font-size: 16px; flex: 1; }
+          .step-duration { color: #666; font-size: 13px; }
+          .tips { background: #f0f8ff; padding: 12px 12px 12px 28px; border-radius: 6px; margin-top: 8px; }
+          .tips li { color: #0066cc; font-size: 13px; margin: 4px 0; }
+          .checkbox { width: 14px; height: 14px; border: 2px solid #1a0a1e; display: inline-block; margin-right: 8px; vertical-align: middle; }
+          @media print { body { padding: 0; } .step { page-break-inside: avoid; } }
+        </style>
+      </head>
+      <body>
+        <h1>${data?.title || instruction.title}</h1>
+        <div class="subtitle">Light By Dawn • ${new Date(instruction.createdAt).toLocaleDateString()} • ${data?.recipeVibe || ''}</div>
+
+        <div class="meta">
+          <div class="meta-item">
+            <div class="meta-label">Quantity</div>
+            <div class="meta-value">${data?.quantity || '-'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Size</div>
+            <div class="meta-value">${data?.size || '-'} oz</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">FO Load</div>
+            <div class="meta-value">${data?.foLoad || '-'}%</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Est. Time</div>
+            <div class="meta-value" style="font-size: 16px;">${data?.estimatedTime || '-'}</div>
+          </div>
+        </div>
+
+        ${ingredientsHtml}
+        ${fragrancesHtml}
+        ${suppliesHtml}
+        ${stepsHtml}
+        ${warningsHtml}
+        ${proTipsHtml}
+
+        <div style="margin-top: 32px; padding-top: 16px; border-top: 2px solid #ddd;">
+          <h2>Batch Notes</h2>
+          <div style="border: 1px solid #ddd; min-height: 120px; border-radius: 8px;"></div>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  // Edit saved instruction - load it back into conversation
+  const editInstruction = (instruction) => {
+    // Clear current conversation and load the saved instruction as context
+    const newConversation = [];
+
+    // Add original prompt if available
+    if (instruction.prompt) {
+      newConversation.push({ role: 'user', content: instruction.prompt });
+    }
+
+    // Add the AI response with the instruction data
+    if (instruction.data) {
+      newConversation.push({
+        role: 'model',
+        content: JSON.stringify(instruction.data),
+        data: instruction.data
+      });
+    } else if (instruction.text) {
+      newConversation.push({ role: 'model', content: instruction.text });
+    }
+
+    setInstructionsConversation(newConversation);
+    setViewingInstruction(null);
+
+    // Set the response so UI shows the instruction card
+    if (instruction.data) {
+      setInstructionsAiResponse({ success: true, data: instruction.data, rawPrompt: instruction.prompt || '' });
+    }
+  };
+
   // Unit converter functions
   const convertUnits = (value, fromUnit) => {
     const num = parseFloat(value);
@@ -1865,28 +2253,29 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
       })),
       recipes: whatCanIMake.map(w => ({
         name: w.recipe.name,
-        size: w.recipe.size,
+        size: 9,
         maxCanMake: w.maxQty,
         components: w.recipe.components,
         vibe: w.recipe.vibe
       }))
     };
 
-    // Calculate costs and potential profits for each recipe
+    // Calculate costs and potential profits for each recipe (using 9oz as default)
     const recipeEconomics = recipes.map(recipe => {
       try {
+        const defaultSize = 9;
         const batchObj = {
           recipe: recipe.name,
           quantity: 12,
-          size: recipe.size || 9,
+          size: defaultSize,
           foLoad: (recipe.foLoad || 10) / 100,
           waxCostPerOz: 0.206,
-          containerCost: recipe.size === 4 ? 1.17 : recipe.size === 6 ? 1.50 : 2.00,
+          containerCost: 2.00,
           wickCost: 0.13,
           labelCost: 0.03,
           packagingCost: 0.74,
           avgFoCost: 1.97,
-          retailPrice: recipe.size === 4 ? 14.00 : recipe.size === 6 ? 18.00 : 24.00
+          retailPrice: 24.00
         };
 
         const calc = calculateBatch(batchObj);
@@ -1894,7 +2283,7 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
 
         return {
           name: recipe.name,
-          size: recipe.size || 9,
+          size: defaultSize,
           costPerCandle: (calc?.totalCostPerCandle || 0).toFixed(2),
           suggestedPrice: batchObj.retailPrice.toFixed(2),
           profitPerCandle: (calc?.profitPerCandle || 0).toFixed(2),
@@ -1902,7 +2291,7 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
           maxCanMake: canMake?.maxQty || 0
         };
       } catch (e) {
-        return { name: recipe.name, size: recipe.size || 9, costPerCandle: '0.00', suggestedPrice: '0.00', profitPerCandle: '0.00', profitMargin: '0.0', maxCanMake: 0 };
+        return { name: recipe.name, size: 9, costPerCandle: '0.00', suggestedPrice: '0.00', profitPerCandle: '0.00', profitMargin: '0.0', maxCanMake: 0 };
       }
     });
 
@@ -1971,10 +2360,28 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
         ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #ff6b6b, #feca57, #ff9ff3); border-radius: 4px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #ff9f6b !important; box-shadow: 0 0 0 3px rgba(255,159,107,0.2); }
 
+        /* Base responsive utilities */
+        .mobile-hide { display: block; }
+        .mobile-show { display: none; }
+        .desktop-sidebar { display: flex; }
+
+        /* Tablet responsive styles */
+        @media (max-width: 1024px) {
+          .two-col-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important; }
+          .batch-builder-grid { grid-template-columns: 1fr !important; }
+        }
+
         /* Mobile responsive styles */
         @media (max-width: 768px) {
           .mobile-menu-btn { display: flex !important; }
-          .logo-icon { width: 40px !important; height: 40px !important; }
+          .mobile-hide { display: none !important; }
+          .mobile-show { display: block !important; }
+          .logo-icon { width: 36px !important; height: 36px !important; }
+          .logo-icon svg { width: 20px !important; height: 20px !important; }
+          .app-title { font-size: 18px !important; }
+          .app-subtitle { font-size: 10px !important; letter-spacing: 1px !important; }
+
           .sidebar {
             position: fixed !important;
             left: 0;
@@ -1983,6 +2390,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             z-index: 1000;
             transform: translateX(-100%);
             transition: transform 0.3s ease;
+            width: 260px !important;
           }
           .sidebar.open { transform: translateX(0); }
           .sidebar-overlay {
@@ -1995,28 +2403,63 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             background: rgba(0,0,0,0.5);
             z-index: 999;
           }
-          .main-content { padding: 16px !important; }
+          .desktop-sidebar { display: none !important; }
+          .main-content { padding: 12px !important; }
           .header-batch-info { display: none !important; }
+
+          /* Header responsive */
+          .app-header { padding: 12px 16px !important; }
 
           /* Page header responsive */
           .page-header {
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 16px !important;
+            gap: 12px !important;
+            margin-bottom: 20px !important;
           }
           .page-header-controls {
             flex-wrap: wrap !important;
             width: 100% !important;
+            gap: 8px !important;
           }
           .page-header-controls select {
-            flex: 1 !important;
-            min-width: 140px !important;
+            flex: 1 1 45% !important;
+            min-width: 120px !important;
+            font-size: 12px !important;
+            padding: 8px 10px !important;
           }
           .page-header-controls button {
-            flex: 1 !important;
+            flex: 1 1 45% !important;
             justify-content: center !important;
+            font-size: 12px !important;
+            padding: 8px 12px !important;
           }
-          .page-title { font-size: 24px !important; }
+          .page-title { font-size: 22px !important; margin-bottom: 4px !important; }
+          .page-subtitle { font-size: 13px !important; }
+
+          /* Stats cards responsive */
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .stat-card {
+            padding: 14px !important;
+            border-radius: 12px !important;
+          }
+          .stat-card svg { width: 20px !important; height: 20px !important; margin-bottom: 8px !important; }
+          .stat-value { font-size: 20px !important; }
+          .stat-label { font-size: 10px !important; }
+
+          /* Two column grid to single column */
+          .two-col-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+
+          /* Batch builder grid */
+          .batch-builder-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+
+          /* Widget cards responsive */
+          .widget-card { padding: 16px !important; border-radius: 12px !important; }
+          .widget-title { font-size: 15px !important; }
+          .widget-title svg { width: 18px !important; height: 18px !important; }
 
           /* List items responsive */
           .list-item {
@@ -2042,32 +2485,141 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           .list-item .item-alert { display: none !important; }
 
           /* Table responsive */
-          .table-wrapper { overflow-x: auto !important; }
+          .table-wrapper {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            margin: 0 -12px !important;
+            padding: 0 12px !important;
+          }
+          .responsive-table { min-width: 600px !important; }
+          .responsive-table th,
+          .responsive-table td {
+            padding: 10px 12px !important;
+            font-size: 12px !important;
+          }
 
           /* Grid cards responsive */
           .grid-container {
             grid-template-columns: 1fr !important;
+            gap: 12px !important;
           }
+
+          /* Recipe/Fragrance cards */
+          .card-item {
+            padding: 14px !important;
+            border-radius: 12px !important;
+          }
+          .card-title { font-size: 15px !important; }
+          .card-subtitle { font-size: 11px !important; }
+
+          /* Form inputs responsive */
+          .form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .form-row { flex-direction: column !important; gap: 12px !important; }
+          .form-input { font-size: 14px !important; padding: 10px 12px !important; }
+          .form-label { font-size: 12px !important; }
+
+          /* Modal responsive */
+          .modal-overlay { padding: 12px !important; }
+          .modal-content {
+            max-width: 100% !important;
+            max-height: 90vh !important;
+            border-radius: 16px !important;
+            padding: 16px !important;
+          }
+          .modal-header { font-size: 18px !important; margin-bottom: 16px !important; }
+
+          /* Buttons responsive */
+          .btn-group {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .btn-group button {
+            flex: 1 1 calc(50% - 4px) !important;
+            min-width: 100px !important;
+            font-size: 12px !important;
+            padding: 10px 12px !important;
+          }
+
+          /* Instructions page responsive */
+          .instructions-layout { flex-direction: column !important; }
+          .instructions-sidebar {
+            width: 100% !important;
+            max-height: 200px !important;
+            order: 2 !important;
+          }
+          .instructions-main { order: 1 !important; }
+          .chat-input-row { flex-direction: column !important; gap: 8px !important; }
+          .chat-input { font-size: 14px !important; }
+          .chat-message { padding: 12px !important; font-size: 13px !important; }
+
+          /* Shopping list responsive */
+          .shopping-summary {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .shopping-item {
+            flex-wrap: wrap !important;
+            padding: 10px !important;
+          }
+
+          /* Pricing page responsive */
+          .pricing-grid { grid-template-columns: 1fr !important; }
+          .pricing-card { padding: 16px !important; }
+
+          /* AI chat panel responsive */
+          .ai-chat-panel {
+            width: calc(100% - 24px) !important;
+            right: 12px !important;
+            bottom: 12px !important;
+            max-height: 70vh !important;
+          }
+
+          /* Converter section */
+          .converter-section { padding: 12px !important; }
+          .converter-inputs { flex-direction: column !important; gap: 8px !important; }
+
+          /* Mobile table edit column */
+          .mobile-edit-col { display: table-cell !important; }
+          .desktop-edit-col { display: none !important; }
+          .mobile-edit-th { display: table-cell !important; }
+          .desktop-edit-th { display: none !important; }
+        }
+
+        /* Desktop: hide mobile edit column, show desktop */
+        .mobile-edit-col { display: none; }
+        .desktop-edit-col { display: table-cell; }
+        .mobile-edit-th { display: none; }
+        .desktop-edit-th { display: table-cell; }
+
+        /* Small mobile responsive */
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .stat-card { padding: 12px !important; }
+          .stat-value { font-size: 18px !important; }
+          .page-title { font-size: 20px !important; }
+          .btn-group button { flex: 1 1 100% !important; }
+          .page-header-controls select,
+          .page-header-controls button { flex: 1 1 100% !important; }
         }
       `}</style>
       
       {/* Header */}
-      <header style={{ background: 'linear-gradient(90deg, rgba(255,107,107,0.15) 0%, rgba(254,202,87,0.1) 50%, rgba(255,159,243,0.15) 100%)', borderBottom: '1px solid rgba(255,159,107,0.2)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <header className="app-header" style={{ background: 'linear-gradient(90deg, rgba(255,107,107,0.15) 0%, rgba(254,202,87,0.1) 50%, rgba(255,159,243,0.15) 100%)', borderBottom: '1px solid rgba(255,159,107,0.2)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* Mobile menu button */}
         <button
           className="mobile-menu-btn"
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          style={{ display: 'none', background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer', padding: '8px', marginRight: '4px' }}
+          style={{ display: 'none', background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer', padding: '8px' }}
         >
           <Menu size={24} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="logo-icon" style={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(255,107,107,0.3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="logo-icon" style={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(255,107,107,0.3)', flexShrink: 0 }}>
             <Flame size={28} color="#1a0a1e" />
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Light By Dawn</h1>
-            <p style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)', letterSpacing: '2px', textTransform: 'uppercase' }}>Candle Business System</p>
+            <h1 className="app-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Light By Dawn</h1>
+            <p className="app-subtitle" style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)', letterSpacing: '2px', textTransform: 'uppercase' }}>Candle Business System</p>
           </div>
         </div>
         {batchList.length > 0 && (
@@ -2113,15 +2665,15 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           {/* Dashboard */}
           {activeTab === 'dashboard' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Dashboard</h2>
-                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>Your candle business at a glance</p>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Dashboard</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Your candle business at a glance</p>
                 </div>
-                <button onClick={resetAllData} style={{ ...btnSecondary, color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><RotateCcw size={16} /> Reset All Data</button>
+                <button className="mobile-hide" onClick={resetAllData} style={{ ...btnSecondary, color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><RotateCcw size={16} /> Reset All Data</button>
               </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+
+              <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 {[
                   { label: 'Total Batches', value: stats.totalBatches, icon: Box, color: '#ff6b6b' },
                   { label: 'Candles Made', value: stats.totalCandles, icon: Flame, color: '#feca57' },
@@ -2132,20 +2684,20 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   { label: 'Recipes Ready', value: `${whatCanIMake.filter(w => w.maxQty >= 12).length} / ${recipes.length}`, icon: CheckCircle, color: '#55efc4' },
                   { label: 'Pending', value: `${stats.pendingBatches} batches`, icon: ShoppingCart, color: '#a29bfe' },
                 ].map((stat, i) => (
-                  <div key={i} style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
-                    <stat.icon size={24} color={stat.color} style={{ marginBottom: '12px' }} />
-                    <div style={{ fontSize: '26px', fontWeight: 700, color: '#fce4d6', marginBottom: '4px' }}>{stat.value}</div>
-                    <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</div>
+                  <div className="stat-card" key={i} style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                    <stat.icon size={22} color={stat.color} style={{ marginBottom: '10px' }} />
+                    <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#fce4d6', marginBottom: '4px' }}>{stat.value}</div>
+                    <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+              <div className="two-col-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                 {/* Low Stock Alert Widget */}
-                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                <div className="widget-card" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <AlertTriangle size={20} color="#ff6b6b" /> Low Stock Alert
+                    <h3 className="widget-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AlertTriangle size={18} color="#ff6b6b" /> Low Stock Alert
                     </h3>
                     <span style={{ fontSize: '13px', color: 'rgba(252,228,214,0.5)' }}>{lowStockItems.length} items</span>
                   </div>
@@ -2178,10 +2730,10 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
 
                 {/* What Can I Make Widget */}
-                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                <div className="widget-card" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Zap size={20} color="#55efc4" /> Ready to Make
+                    <h3 className="widget-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={18} color="#55efc4" /> Ready to Make
                     </h3>
                     <button onClick={() => setActiveTab('inventory')} style={{ fontSize: '12px', color: '#feca57', background: 'none', border: 'none', cursor: 'pointer' }}>View all →</button>
                   </div>
@@ -2190,7 +2742,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: item.maxQty >= 12 ? 'rgba(85,239,196,0.1)' : item.maxQty > 0 ? 'rgba(254,202,87,0.1)' : 'rgba(255,107,107,0.1)', borderRadius: '8px', border: `1px solid ${item.maxQty >= 12 ? 'rgba(85,239,196,0.2)' : item.maxQty > 0 ? 'rgba(254,202,87,0.2)' : 'rgba(255,107,107,0.2)'}` }}>
                         <div>
                           <span style={{ fontSize: '13px', fontWeight: 500 }}>{item.recipe.name}</span>
-                          <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginLeft: '8px' }}>{item.recipe.size}oz</span>
+                          <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginLeft: '8px' }}>9oz</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {item.maxQty >= 12 ? (
@@ -2315,14 +2867,21 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           {/* Batch Builder */}
           {activeTab === 'calculator' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Builder</h2>
-                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>Build multiple batches and export to shopping list</p>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Builder</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Build multiple batches and export to shopping list</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="btn-group page-header-controls" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button onClick={resetCurrentBatch} style={btnSecondary}><RotateCcw size={16} /> Reset</button>
                   <button onClick={openLogBatchModal} style={{ ...btnSecondary, color: '#55efc4', borderColor: 'rgba(85,239,196,0.3)' }}><ClipboardList size={16} /> Log Batch</button>
+                  <button onClick={() => {
+                    // Build prompt from current batch and auto-trigger AI
+                    const prompt = `How do I make ${currentBatch.quantity} ${currentBatch.recipe} ${currentBatch.size}oz candles?`;
+                    clearInstructionsConversation(); // Start fresh conversation
+                    setPendingAutoPrompt(prompt);
+                    setActiveTab('instructions');
+                  }} style={{ ...btnSecondary, color: '#a29bfe', borderColor: 'rgba(162,155,254,0.3)' }}><ScrollText size={16} /> Send to Instructions</button>
                   {batchList.some(b => b.id === currentBatch.id) ? (
                     <>
                       <button onClick={() => {
@@ -2337,7 +2896,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              <div className="batch-builder-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 {/* Left - Inputs */}
                 <div>
                   <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
@@ -2360,10 +2919,10 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               });
                               avgFoCost = Math.round(costs.reduce((sum, c) => sum + c, 0) * 100) / 100;
                             }
-                            setCurrentBatch({ ...currentBatch, recipe: r.name, size: r.size || 9, foLoad: (r.foLoad || 10) / 100, avgFoCost });
+                            setCurrentBatch({ ...currentBatch, recipe: r.name, foLoad: (r.foLoad || 10) / 100, avgFoCost });
                           }
                         }} style={inputStyle}>
-                          {recipes.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                          {[...recipes].sort((a, b) => a.name.trim().localeCompare(b.name.trim())).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
                         </select>
                       </div>
 
@@ -2375,6 +2934,35 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <span key={i} style={{ padding: '4px 8px', background: 'rgba(255,159,107,0.15)', borderRadius: '4px', fontSize: '11px' }}>{c.fragrance} {c.percent}%</span>
                             ))}
                           </div>
+                          {/* Dye Information */}
+                          {selectedRecipe.dyes && selectedRecipe.dyes.length > 0 && (
+                            <div style={{ marginTop: '12px', borderTop: '1px solid rgba(162,155,254,0.2)', paddingTop: '12px' }}>
+                              <div style={{ color: '#a29bfe', fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Droplets size={14} /> Color Dyes for {currentBatch.size}oz candles:
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {selectedRecipe.dyes.map((dye, i) => {
+                                  // Support both old dropsPerOz and new amountPerOz formats
+                                  const amount = dye.amountPerOz ?? dye.dropsPerOz ?? 0;
+                                  const unit = dye.unit || 'drops';
+                                  const amountPerCandle = amount * currentBatch.size;
+                                  const totalAmount = amountPerCandle * currentBatch.quantity;
+                                  const unitLabel = unit === 'drops' ? 'drops' : unit;
+                                  return (
+                                    <div key={i} style={{ padding: '8px 12px', background: 'rgba(162,155,254,0.15)', borderRadius: '6px', border: '1px solid rgba(162,155,254,0.2)' }}>
+                                      <div style={{ fontWeight: 600, color: '#a29bfe', marginBottom: '4px' }}>{dye.name}</div>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.7)' }}>
+                                        {amount} {unitLabel}/oz = <strong>{amountPerCandle.toFixed(1)}</strong> {unitLabel}/candle
+                                      </div>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginTop: '2px' }}>
+                                        Total for batch: <strong style={{ color: '#55efc4' }}>{totalAmount.toFixed(unit === 'drops' ? 0 : 2)}</strong> {unitLabel}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -2793,14 +3381,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           {/* Instructions Page */}
           {activeTab === 'instructions' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Instructions</h2>
-                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>Ask the AI how to make candles and save detailed instructions</p>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Instructions</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Ask the AI how to make candles and save detailed instructions</p>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
+              <div className="instructions-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
                 {/* Main Content Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {/* AI Conversation Section */}
@@ -2830,7 +3418,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             {recipes.filter(r => !r.archived).slice(0, 4).map(r => (
                               <button
                                 key={r.id}
-                                onClick={() => setInstructionsAiPrompt(`How do I make 12 ${r.name} ${r.size}oz candles?`)}
+                                onClick={() => setInstructionsAiPrompt(`How do I make 12 ${r.name} candles?`)}
                                 style={{ padding: '8px 14px', background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '20px', color: '#a29bfe', fontSize: '12px', cursor: 'pointer' }}
                               >
                                 {r.name}
@@ -2859,7 +3447,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                 </div>
                                 <div style={{ padding: '20px', maxHeight: '500px', overflowY: 'auto' }}>
                                   {/* Quick Stats */}
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                                  <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '10px', marginBottom: '20px' }}>
                                     <div style={{ background: 'rgba(255,159,107,0.08)', padding: '14px', borderRadius: '10px', textAlign: 'center' }}>
                                       <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Quantity</div>
                                       <div style={{ fontSize: '24px', fontWeight: 700 }}>{msg.data.quantity}</div>
@@ -3098,14 +3686,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
 
                 {/* Sidebar */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div className="instructions-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Unit Converter */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                      <Scale size={20} color="#74b9ff" />
-                      <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Unit Converter</h3>
+                  <div className="converter-section" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <Scale size={18} color="#74b9ff" />
+                      <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Unit Converter</h3>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <div className="converter-inputs" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <input
                         type="number"
                         value={converterValue}
@@ -3222,15 +3810,38 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                   {new Date(ins.createdAt).toLocaleDateString()}
                                 </div>
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (confirm('Delete this instruction?')) deleteInstruction(ins.id);
-                                }}
-                                style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    printInstruction(ins);
+                                  }}
+                                  style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}
+                                  title="Print"
+                                >
+                                  <Printer size={14} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editInstruction(ins);
+                                  }}
+                                  style={{ background: 'rgba(85,239,196,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#55efc4', cursor: 'pointer' }}
+                                  title="Edit in chat"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirmModal({ type: 'instruction', id: ins.id, title: ins.title });
+                                  }}
+                                  style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}
+                                  title="Delete"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -3311,7 +3922,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
                           <h4 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>{item.recipe.name}</h4>
-                          <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{item.recipe.size}oz • {item.recipe.vibe}</span>
+                          <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{item.recipe.vibe}</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           {item.maxQty >= 12 ? (
@@ -3344,7 +3955,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       )}
                       
                       {item.maxQty >= 12 && (
-                        <button onClick={() => { setCurrentBatch({ ...currentBatch, recipe: item.recipe.name, size: item.recipe.size, foLoad: item.recipe.foLoad / 100, quantity: 12 }); setActiveTab('calculator'); }} style={{ ...btnSecondary, width: '100%', justifyContent: 'center', marginTop: '8px', fontSize: '12px' }}>
+                        <button onClick={() => { setCurrentBatch({ ...currentBatch, recipe: item.recipe.name, size: 9, foLoad: item.recipe.foLoad / 100, quantity: 12 }); setActiveTab('calculator'); }} style={{ ...btnSecondary, width: '100%', justifyContent: 'center', marginTop: '8px', fontSize: '12px' }}>
                           <Calculator size={14} /> Build Batch
                         </button>
                       )}
@@ -3507,18 +4118,22 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
               {/* Table View */}
               {materialView === 'table' && (
-                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'auto' }}>
+                  <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
+                        {/* Mobile-only Edit column header - shows first on mobile */}
+                        <th className="mobile-edit-th" style={{ padding: '10px 8px', textAlign: 'center', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)', position: 'sticky', left: 0, background: 'rgba(255,159,107,0.1)', zIndex: 1 }}>Edit</th>
                         <th style={{ padding: '14px 16px', textAlign: 'left', width: '40px' }}>
                           <div onClick={() => selectedMaterials.length === filteredMaterials.length ? clearMaterialSelection() : selectAllMaterials()} style={{ width: '20px', height: '20px', borderRadius: '4px', border: `2px solid ${selectedMaterials.length === filteredMaterials.length && filteredMaterials.length > 0 ? '#feca57' : 'rgba(255,159,107,0.3)'}`, background: selectedMaterials.length === filteredMaterials.length && filteredMaterials.length > 0 ? '#feca57' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                             {selectedMaterials.length === filteredMaterials.length && filteredMaterials.length > 0 && <Check size={12} color="#1a0a1e" />}
                           </div>
                         </th>
-                        {['ID', 'Category', 'Name', 'Vendor', 'Pkg Size', 'Pkg Cost', '$/Unit', 'On Hand', 'Reorder', ''].map(h => (
+                        {['ID', 'Category', 'Name', 'Vendor', 'Pkg Size', 'Pkg Cost', '$/Unit', 'On Hand', 'Reorder'].map(h => (
                           <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>
                         ))}
+                        {/* Desktop-only Edit column header */}
+                        <th className="desktop-edit-th" style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3527,6 +4142,10 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         const isLowStock = m.qtyOnHand < m.reorderPoint;
                         return (
                           <tr key={m.id} onClick={() => toggleMaterialSelection(m.id)} style={{ borderTop: '1px solid rgba(255,159,107,0.1)', background: isSelected ? 'rgba(254,202,87,0.1)' : isLowStock ? 'rgba(255,107,107,0.05)' : 'transparent', cursor: 'pointer' }}>
+                            {/* Mobile-only Edit column - sticky on left */}
+                            <td className="mobile-edit-col" style={{ padding: '10px 8px', position: 'sticky', left: 0, background: isSelected ? 'rgba(254,202,87,0.15)' : isLowStock ? 'rgba(255,107,107,0.1)' : 'rgba(26,10,30,0.95)', zIndex: 1 }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => openEditMaterial(m)} style={{ background: 'rgba(254,202,87,0.3)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={16} /></button>
+                            </td>
                             <td style={{ padding: '14px 16px' }}>
                               <div style={{ width: '20px', height: '20px', borderRadius: '4px', border: `2px solid ${isSelected ? '#feca57' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#feca57' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 {isSelected && <Check size={12} color="#1a0a1e" />}
@@ -3550,7 +4169,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               </div>
                             </td>
                             <td style={{ padding: '14px 16px', color: 'rgba(252,228,214,0.5)' }}>{m.reorderPoint}</td>
-                            <td style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
+                            {/* Desktop-only Edit/Delete column */}
+                            <td className="desktop-edit-col" style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
                               <div style={{ display: 'flex', gap: '6px' }}>
                                 <button onClick={() => openEditMaterial(m)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
                                 <button onClick={(e) => deleteMaterial(m.id, e)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={12} /></button>
@@ -3613,18 +4233,18 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               </div>
 
               {/* Summary Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Fragrances</div>
-                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#feca57' }}>{fragrances.filter(f => !f.archived).length}</div>
+              <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Fragrances</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#feca57' }}>{fragrances.filter(f => !f.archived).length}</div>
                 </div>
-                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Stock</div>
-                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0), 0).toFixed(1)} oz</div>
+                <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Stock</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0), 0).toFixed(1)} oz</div>
                 </div>
-                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Value</div>
-                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0))}</div>
+                <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Value</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0))}</div>
                 </div>
               </div>
 
@@ -3805,14 +4425,18 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
                       {aiResponse && !aiLoading && (
                         <div style={{ fontSize: '14px', lineHeight: '1.6', color: 'rgba(252,228,214,0.9)', whiteSpace: 'pre-wrap' }}>
-                          {aiResponse.split('\n').map((line, i) => {
-                            if (line.startsWith('**') && line.endsWith('**')) {
-                              return <h4 key={i} style={{ fontSize: '14px', fontWeight: 600, color: '#a29bfe', marginTop: i > 0 ? '16px' : '0', marginBottom: '8px' }}>{line.replace(/\*\*/g, '')}</h4>;
+                          {(aiResponse.text || aiResponse).split('\n').map((line, i) => {
+                            if (line.startsWith('**') && line.includes(':**')) {
+                              const [label, ...rest] = line.split(':**');
+                              return <p key={i} style={{ marginBottom: '8px' }}><strong style={{ color: '#a29bfe' }}>{label.replace(/\*\*/g, '')}:</strong> {rest.join(':**').replace(/\*\*/g, '')}</p>;
+                            }
+                            if (line.startsWith('•')) {
+                              return <p key={i} style={{ marginBottom: '4px', paddingLeft: '8px' }}>{line}</p>;
                             }
                             if (line.match(/^\d+\.\s\*\*/)) {
                               return <h4 key={i} style={{ fontSize: '14px', fontWeight: 600, color: '#a29bfe', marginTop: '16px', marginBottom: '8px' }}>{line.replace(/\*\*/g, '')}</h4>;
                             }
-                            return <p key={i} style={{ marginBottom: '8px' }}>{line}</p>;
+                            return line ? <p key={i} style={{ marginBottom: '8px' }}>{line}</p> : null;
                           })}
                         </div>
                       )}
@@ -3863,10 +4487,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   {/* Sort Dropdown */}
                   <select value={recipeSort} onChange={e => setRecipeSort(e.target.value)} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '8px', color: '#fce4d6', fontSize: '13px' }}>
                     <option value="name">Sort: Name A-Z</option>
-                    <option value="size">Sort: Size (Large-Small)</option>
-                    <option value="size-asc">Sort: Size (Small-Large)</option>
                     <option value="canMake">Sort: Can Make (Most)</option>
-                    <option value="profit">Sort: Profit (High-Low)</option>
                     <option value="components">Sort: Complexity (Simple)</option>
                     <option value="components-desc">Sort: Complexity (Complex)</option>
                     <option value="vibe">Sort: Vibe/Theme</option>
@@ -3902,7 +4523,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             </span>
                           )}
                         </div>
-                        <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '12px', marginBottom: '12px' }}>{r.size}oz • {r.foLoad}% FO • {r.components.length} notes</p>
+                        <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '12px', marginBottom: '12px' }}>{r.foLoad}% FO • {r.components.length} notes</p>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
                           {r.components.slice(0, 3).map((c, i) => (
                             <span key={i} style={{ padding: '4px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', fontSize: '11px' }}>{c.fragrance}</span>
@@ -3933,7 +4554,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{r.name}</h4>
                             <span style={{ color: '#feca57', fontSize: '12px' }}>{r.vibe}</span>
                           </div>
-                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{r.size}oz • {r.container} • {r.components.length} fragrance notes</div>
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{r.foLoad}% FO • {r.components.length} fragrance notes</div>
                         </div>
                         <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                           {canMakeInfo && (
@@ -3961,9 +4582,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <thead>
                       <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
                         <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Recipe</th>
-                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Size</th>
-                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Container</th>
-                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Notes</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>FO Load</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Fragrances</th>
                         <th style={{ padding: '14px 16px', textAlign: 'center', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Can Make</th>
                         <th style={{ padding: '14px 16px', textAlign: 'right', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase' }}>Actions</th>
                       </tr>
@@ -3977,9 +4597,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <div style={{ fontWeight: 600 }}>{r.name}</div>
                               <div style={{ fontSize: '12px', color: '#feca57' }}>{r.vibe}</div>
                             </td>
-                            <td style={{ padding: '14px 16px', fontSize: '14px' }}>{r.size}oz</td>
-                            <td style={{ padding: '14px 16px', fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>{r.container}</td>
-                            <td style={{ padding: '14px 16px', fontSize: '13px' }}>{r.components.length} fragrances</td>
+                            <td style={{ padding: '14px 16px', fontSize: '14px' }}>{r.foLoad}%</td>
+                            <td style={{ padding: '14px 16px', fontSize: '13px' }}>{r.components.length} notes</td>
                             <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                               {canMakeInfo && (
                                 <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, background: canMakeInfo.maxQty >= 12 ? 'rgba(85,239,196,0.2)' : canMakeInfo.maxQty > 0 ? 'rgba(254,202,87,0.2)' : 'rgba(255,107,107,0.2)', color: canMakeInfo.maxQty >= 12 ? '#55efc4' : canMakeInfo.maxQty > 0 ? '#feca57' : '#ff6b6b' }}>
@@ -4008,12 +4627,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           {/* Pricing */}
           {activeTab === 'pricing' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pricing Engine</h2>
-                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>Set your pricing tiers and analyze margins</p>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Pricing Engine</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Set your pricing tiers and analyze margins</p>
                 </div>
-                <button onClick={() => { setCurrentBatch(prev => ({ ...prev, recipe: pricingRecipe, size: pricingRecipeData?.size || 9, foLoad: (pricingRecipeData?.foLoad || 10) / 100 })); setActiveTab('calculator'); }} style={btnPrimary}><Calculator size={18} /> Build Batch</button>
+                <button onClick={() => { setCurrentBatch(prev => ({ ...prev, recipe: pricingRecipe, foLoad: (pricingRecipeData?.foLoad || 10) / 100 })); setActiveTab('calculator'); }} style={btnPrimary}><Calculator size={18} /> Build Batch</button>
               </div>
 
               {/* Recipe Selector - Prominent Card */}
@@ -4027,7 +4646,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       style={{ padding: '12px 20px', background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(254,202,87,0.5)', borderRadius: '10px', color: '#fce4d6', fontSize: '16px', fontWeight: 600, minWidth: '280px', cursor: 'pointer' }}
                     >
                       {recipes.map(r => (
-                        <option key={r.id} value={r.name}>{r.name} ({r.size}oz)</option>
+                        <option key={r.id} value={r.name}>{r.name}</option>
                       ))}
                     </select>
                   </div>
@@ -4068,13 +4687,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+              <div className="pricing-grid two-col-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 <div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                  <div className="pricing-card" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)' }}>
                       <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Pricing Tiers</h3>
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
                       <thead><tr style={{ background: 'rgba(0,0,0,0.2)' }}>{['Tier', 'Qty', 'Price', 'Profit', 'Margin'].map(h => (<th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.5)' }}>{h}</th>))}</tr></thead>
                       <tbody>
                         {pricingTiers.map((t, i) => {
@@ -4096,13 +4716,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ background: 'linear-gradient(135deg, rgba(85,239,196,0.15) 0%, rgba(85,239,196,0.05) 100%)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: '#55efc4' }}>Target Pricing Guide</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="pricing-card" style={{ background: 'linear-gradient(135deg, rgba(85,239,196,0.15) 0%, rgba(85,239,196,0.05) 100%)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#55efc4' }}>Target Pricing Guide</h3>
+                    <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                       <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px', textTransform: 'uppercase' }}>65% Margin</div>
                         <div style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{formatCurrency(pricingCalc.totalCostPerCandle / 0.35)}</div>
@@ -4122,12 +4743,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     </div>
                   </div>
                   
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>Break-Even Analysis</h3>
-                    <div style={{ fontSize: '14px', color: 'rgba(252,228,214,0.7)', marginBottom: '12px' }}>
-                      Assuming $200/month fixed costs (supplies, marketing, etc.)
+                  <div className="pricing-card" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>Break-Even Analysis</h3>
+                    <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)', marginBottom: '12px' }}>
+                      Assuming $200/month fixed costs
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                       <div style={{ background: 'rgba(255,159,107,0.1)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>AT RETAIL</div>
                         <div style={{ fontSize: '20px', fontWeight: 700, color: '#feca57' }}>{Math.ceil(200 / (pricingTiers[0]?.price - pricingCalc.totalCostPerCandle || 1))} candles</div>
@@ -4146,13 +4767,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           {/* Shopping List */}
           {activeTab === 'shopping' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Shopping List</h2>
-                  <p style={{ color: 'rgba(252,228,214,0.6)' }}>{batchList.length > 0 ? `${batchList.length} batch${batchList.length > 1 ? 'es' : ''} • ${shoppingList.totals.totalCandles} total candles` : 'Add batches from Batch Builder to generate shopping list'}</p>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Shopping List</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>{batchList.length > 0 ? `${batchList.length} batch${batchList.length > 1 ? 'es' : ''} • ${shoppingList.totals.totalCandles} total candles` : 'Add batches from Batch Builder to generate shopping list'}</p>
                 </div>
                 {batchList.length > 0 && (
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div className="btn-group" style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={clearShoppingList} style={{ ...btnSecondary, color: '#ff6b6b', borderColor: 'rgba(255,107,107,0.3)' }}><Trash2 size={18} /> Clear List</button>
                     <button onClick={exportShoppingList} style={btnPrimary}><Download size={18} /> Export</button>
                   </div>
@@ -4169,7 +4790,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               ) : (
                 <>
                   {/* Stock Status - What You Need to Order */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                  <div className="shopping-summary two-col-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                     {/* Need to Order */}
                     <div style={{ background: 'linear-gradient(135deg, rgba(255,107,107,0.15) 0%, rgba(255,107,107,0.05) 100%)', border: '2px solid rgba(255,107,107,0.4)', borderRadius: '16px', padding: '24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -4417,6 +5038,188 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               )}
             </div>
           )}
+
+          {/* Admin Page */}
+          {activeTab === 'admin' && (
+            <div>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Admin Settings</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Configure default values and preferences</p>
+                </div>
+                <button onClick={() => { if (confirm('Reset all settings to factory defaults?')) setAppDefaults(defaultAppSettings); }} style={btnSecondary}><RotateCcw size={16} /> Reset to Defaults</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+
+                {/* Batch Builder Defaults */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#feca57' }}><Calculator size={20} /> Batch Builder Defaults</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Candle Size (oz)</label>
+                        <input type="number" value={appDefaults.defaultCandleSize} onChange={e => setAppDefaults({ ...appDefaults, defaultCandleSize: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Quantity</label>
+                        <input type="number" value={appDefaults.defaultQuantity} onChange={e => setAppDefaults({ ...appDefaults, defaultQuantity: parseInt(e.target.value) || 0 })} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default FO Load (%)</label>
+                      <input type="number" value={appDefaults.defaultFoLoad} onChange={e => setAppDefaults({ ...appDefaults, defaultFoLoad: parseFloat(e.target.value) || 0 })} step="0.5" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Wax</label>
+                      <select value={appDefaults.defaultWax} onChange={e => setAppDefaults({ ...appDefaults, defaultWax: e.target.value })} style={inputStyle}>
+                        <option value="">None selected</option>
+                        {materials.filter(m => m.category === 'Wax').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Container</label>
+                      <select value={appDefaults.defaultContainer} onChange={e => setAppDefaults({ ...appDefaults, defaultContainer: e.target.value })} style={inputStyle}>
+                        <option value="">None selected</option>
+                        {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Wick</label>
+                      <select value={appDefaults.defaultWick} onChange={e => setAppDefaults({ ...appDefaults, defaultWick: e.target.value })} style={inputStyle}>
+                        <option value="">None selected</option>
+                        {materials.filter(m => m.category === 'Wick').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Label</label>
+                        <select value={appDefaults.defaultLabel} onChange={e => setAppDefaults({ ...appDefaults, defaultLabel: e.target.value })} style={inputStyle}>
+                          <option value="">None selected</option>
+                          <option value="none">No label</option>
+                          <option value="standard-vinyl">Standard Vinyl</option>
+                          {materials.filter(m => m.category === 'Label').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Packaging</label>
+                        <select value={appDefaults.defaultPackaging} onChange={e => setAppDefaults({ ...appDefaults, defaultPackaging: e.target.value })} style={inputStyle}>
+                          <option value="">None selected</option>
+                          <option value="none">No packaging</option>
+                          {materials.filter(m => m.category === 'Packaging').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pricing Defaults */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#55efc4' }}><DollarSign size={20} /> Pricing Defaults</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Overhead per Candle ($)</label>
+                      <input type="number" step="0.01" value={appDefaults.defaultOverheadPerCandle} onChange={e => setAppDefaults({ ...appDefaults, defaultOverheadPerCandle: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                      <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px', display: 'block' }}>Electricity, workspace, etc.</span>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Labor Cost per Candle ($)</label>
+                      <input type="number" step="0.01" value={appDefaults.defaultLaborCostPerCandle} onChange={e => setAppDefaults({ ...appDefaults, defaultLaborCostPerCandle: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Profit Margin Target (%)</label>
+                      <input type="number" value={appDefaults.defaultProfitMarginTarget} onChange={e => setAppDefaults({ ...appDefaults, defaultProfitMarginTarget: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(255,159,107,0.2)', paddingTop: '16px', marginTop: '8px' }}>
+                      <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(252,228,214,0.8)', marginBottom: '12px' }}>Standard Vinyl Label Pricing</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Small (≤4oz)</label>
+                          <input type="number" step="0.01" value={appDefaults.smallLabelCost} onChange={e => setAppDefaults({ ...appDefaults, smallLabelCost: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Medium (5-6oz)</label>
+                          <input type="number" step="0.01" value={appDefaults.mediumLabelCost} onChange={e => setAppDefaults({ ...appDefaults, mediumLabelCost: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Large (7oz+)</label>
+                          <input type="number" step="0.01" value={appDefaults.largeLabelCost} onChange={e => setAppDefaults({ ...appDefaults, largeLabelCost: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recipe Defaults */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#a29bfe' }}><BookOpen size={20} /> Recipe Defaults</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default FO Load for New Recipes (%)</label>
+                      <input type="number" value={appDefaults.defaultRecipeFoLoad} onChange={e => setAppDefaults({ ...appDefaults, defaultRecipeFoLoad: parseFloat(e.target.value) || 0 })} step="0.5" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Dye Unit</label>
+                      <select value={appDefaults.defaultDyeUnit} onChange={e => setAppDefaults({ ...appDefaults, defaultDyeUnit: e.target.value })} style={inputStyle}>
+                        <option value="drops">Drops</option>
+                        <option value="ml">Milliliters (ml)</option>
+                        <option value="g">Grams (g)</option>
+                        <option value="oz">Ounces (oz)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display Preferences */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#74b9ff' }}><Grid size={20} /> Display Preferences</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Recipe View</label>
+                      <select value={appDefaults.defaultRecipeView} onChange={e => setAppDefaults({ ...appDefaults, defaultRecipeView: e.target.value })} style={inputStyle}>
+                        <option value="grid">Grid</option>
+                        <option value="list">List</option>
+                        <option value="table">Table</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default Fragrance View</label>
+                      <select value={appDefaults.defaultFragranceView} onChange={e => setAppDefaults({ ...appDefaults, defaultFragranceView: e.target.value })} style={inputStyle}>
+                        <option value="grid">Grid</option>
+                        <option value="list">List</option>
+                        <option value="table">Table</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <input type="checkbox" id="showArchived" checked={appDefaults.showArchivedByDefault} onChange={e => setAppDefaults({ ...appDefaults, showArchivedByDefault: e.target.checked })} style={{ width: '18px', height: '18px', accentColor: '#feca57' }} />
+                      <label htmlFor="showArchived" style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', cursor: 'pointer' }}>Show archived items by default</label>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <input type="checkbox" id="returnToFragrances" checked={appDefaults.returnToFragrancesOnRecipeCancel} onChange={e => setAppDefaults({ ...appDefaults, returnToFragrancesOnRecipeCancel: e.target.checked })} style={{ width: '18px', height: '18px', accentColor: '#feca57' }} />
+                      <label htmlFor="returnToFragrances" style={{ fontSize: '13px', color: 'rgba(252,228,214,0.8)', cursor: 'pointer' }}>Return to Fragrances when canceling recipe creation</label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Business Settings */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#fd79a8' }}><Flame size={20} /> Business Settings</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Business Name</label>
+                      <input type="text" value={appDefaults.businessName} onChange={e => setAppDefaults({ ...appDefaults, businessName: e.target.value })} style={inputStyle} />
+                      <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px', display: 'block' }}>Used on printed instructions</span>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Currency Symbol</label>
+                      <input type="text" value={appDefaults.currencySymbol} onChange={e => setAppDefaults({ ...appDefaults, currencySymbol: e.target.value })} maxLength={3} style={{ ...inputStyle, width: '80px' }} />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -4588,9 +5391,9 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Recipe *</label>
-                <select value={logBatchForm.recipe} onChange={e => { const r = recipes.find(rec => rec.name === e.target.value); if (r) setLogBatchForm({ ...logBatchForm, recipe: r.name, size: r.size }); }} style={inputStyle}>
+                <select value={logBatchForm.recipe} onChange={e => { const r = recipes.find(rec => rec.name === e.target.value); if (r) setLogBatchForm({ ...logBatchForm, recipe: r.name }); }} style={inputStyle}>
                   <option value="">Select a recipe...</option>
-                  {recipes.map(r => <option key={r.id} value={r.name}>{r.name} ({r.size}oz)</option>)}
+                  {[...recipes].sort((a, b) => a.name.trim().localeCompare(b.name.trim())).map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
                 </select>
               </div>
               
@@ -4652,44 +5455,163 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
         </div>
       )}
 
-      {/* Recipe Modal */}
+      {/* Recipe Modal - Draggable & Resizable on PC */}
       {showRecipeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '20px', padding: '32px', width: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{editingRecipe ? 'Edit Recipe' : 'Create Recipe'}</h2>
-              <button onClick={() => setShowRecipeModal(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000 }} onClick={cancelRecipeModal}>
+          <div
+            id="recipe-modal"
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              ...(recipeModalPos.x !== null ? { left: recipeModalPos.x, top: recipeModalPos.y } : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }),
+              width: recipeModalSize.width,
+              height: recipeModalSize.height || 'auto',
+              maxHeight: recipeModalSize.height ? undefined : '90vh',
+              background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)',
+              border: '1px solid rgba(255,159,107,0.3)',
+              borderRadius: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Draggable Header */}
+            <div
+              onMouseDown={handleModalDragStart}
+              style={{
+                padding: '16px 24px',
+                background: 'rgba(255,159,107,0.1)',
+                borderBottom: '1px solid rgba(255,159,107,0.2)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: isDraggingModal ? 'grabbing' : 'grab',
+                userSelect: 'none',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Move size={16} color="rgba(252,228,214,0.4)" />
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '22px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{editingRecipe ? 'Edit Recipe' : 'Create Recipe'}</h2>
+              </div>
+              <button onClick={cancelRecipeModal} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer', padding: '4px' }}><X size={22} /></button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Recipe Name *</label><input type="text" value={recipeForm.name} onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })} placeholder="e.g., Sunset Dreams" style={inputStyle} /></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Vibe/Theme</label><input type="text" value={recipeForm.vibe} onChange={e => setRecipeForm({ ...recipeForm, vibe: e.target.value })} placeholder="e.g., Tropical • Warm" style={inputStyle} /></div>
-                <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Style</label><input type="text" value={recipeForm.style} onChange={e => setRecipeForm({ ...recipeForm, style: e.target.value })} placeholder="e.g., Beach house luxury" style={inputStyle} /></div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-                <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Description</label><textarea value={recipeForm.description} onChange={e => setRecipeForm({ ...recipeForm, description: e.target.value })} rows={2} placeholder="Describe the scent profile..." style={{ ...inputStyle, resize: 'vertical' }} /></div>
-                <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default FO Load %</label><input type="number" value={recipeForm.foLoad} onChange={e => setRecipeForm({ ...recipeForm, foLoad: parseFloat(e.target.value) || 0 })} style={inputStyle} /><div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px' }}>Can adjust in Batch Builder</div></div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#feca57' }}>Fragrance Components (must total 100%)</label>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0) === 100 ? '#55efc4' : '#ff6b6b' }}>Total: {recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0)}%</span>
+
+            {/* Scrollable Content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Recipe Name *</label><input type="text" value={recipeForm.name} onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })} placeholder="e.g., Sunset Dreams" style={inputStyle} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Vibe/Theme</label><input type="text" value={recipeForm.vibe} onChange={e => setRecipeForm({ ...recipeForm, vibe: e.target.value })} placeholder="e.g., Tropical • Warm" style={inputStyle} /></div>
+                  <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Style</label><input type="text" value={recipeForm.style} onChange={e => setRecipeForm({ ...recipeForm, style: e.target.value })} placeholder="e.g., Beach house luxury" style={inputStyle} /></div>
                 </div>
-                {recipeForm.components.map((comp, idx) => (
-                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 100px 80px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
-                    <select value={comp.fragrance} onChange={e => updateComponent(idx, 'fragrance', e.target.value)} style={inputStyle}><option value="">Select fragrance...</option>{fragrances.map(f => <option key={f.id} value={f.name}>{f.name} ({f.type})</option>)}</select>
-                    <select value={comp.type} onChange={e => updateComponent(idx, 'type', e.target.value)} style={inputStyle}><option value="FO">FO</option><option value="EO">EO</option></select>
-                    <input type="number" value={comp.percent} onChange={e => updateComponent(idx, 'percent', e.target.value)} placeholder="%" style={{ ...inputStyle, textAlign: 'center' }} />
-                    <button onClick={() => removeComponent(idx)} disabled={recipeForm.components.length <= 1} style={{ padding: '10px', background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '8px', color: '#ff6b6b', cursor: recipeForm.components.length <= 1 ? 'not-allowed' : 'pointer', opacity: recipeForm.components.length <= 1 ? 0.5 : 1 }}><Trash2 size={16} /></button>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                  <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Description</label><textarea value={recipeForm.description} onChange={e => setRecipeForm({ ...recipeForm, description: e.target.value })} rows={2} placeholder="Describe the scent profile..." style={{ ...inputStyle, resize: 'vertical', minHeight: '60px', maxHeight: '300px', overflow: 'auto' }} /></div>
+                  <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default FO Load %</label><input type="number" value={recipeForm.foLoad} onChange={e => setRecipeForm({ ...recipeForm, foLoad: parseFloat(e.target.value) || 0 })} style={inputStyle} /><div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px' }}>Can adjust in Batch Builder</div></div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#feca57' }}>Fragrance Components (must total 100%)</label>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0) === 100 ? '#55efc4' : '#ff6b6b' }}>Total: {recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0)}%</span>
                   </div>
-                ))}
-                <button onClick={addComponent} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(255,159,107,0.15)', border: '1px dashed rgba(255,159,107,0.3)', borderRadius: '8px', color: '#feca57', cursor: 'pointer', fontSize: '13px', width: '100%', justifyContent: 'center' }}><Plus size={16} /> Add Component</button>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                <button onClick={() => setShowRecipeModal(false)} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
-                <button onClick={saveRecipe} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}><Save size={18} /> {editingRecipe ? 'Save Changes' : 'Create Recipe'}</button>
+                  {recipeForm.components.map((comp, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 100px 80px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
+                      <select value={comp.fragrance} onChange={e => updateComponent(idx, 'fragrance', e.target.value)} style={inputStyle}><option value="">Select fragrance...</option>{[...fragrances].sort((a, b) => a.name.localeCompare(b.name)).map(f => <option key={f.id} value={f.name}>{f.name} ({f.type})</option>)}</select>
+                      <select value={comp.type} onChange={e => updateComponent(idx, 'type', e.target.value)} style={inputStyle}><option value="FO">FO</option><option value="EO">EO</option></select>
+                      <input type="number" value={comp.percent} onChange={e => updateComponent(idx, 'percent', e.target.value)} placeholder="%" style={{ ...inputStyle, textAlign: 'center' }} />
+                      <button onClick={() => removeComponent(idx)} disabled={recipeForm.components.length <= 1} style={{ padding: '10px', background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '8px', color: '#ff6b6b', cursor: recipeForm.components.length <= 1 ? 'not-allowed' : 'pointer', opacity: recipeForm.components.length <= 1 ? 0.5 : 1 }}><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                  <button onClick={addComponent} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(255,159,107,0.15)', border: '1px dashed rgba(255,159,107,0.3)', borderRadius: '8px', color: '#feca57', cursor: 'pointer', fontSize: '13px', width: '100%', justifyContent: 'center' }}><Plus size={16} /> Add Component</button>
+                </div>
+
+                {/* Color Dye Section */}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#a29bfe' }}>Color Dyes</label>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '12px' }}>Configure dye colors and amount per ounce for consistent coloring. The batch builder will calculate totals based on candle size.</div>
+                  {(recipeForm.dyes || []).map((dye, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 90px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={dye.name}
+                        onChange={e => {
+                          const newDyes = [...(recipeForm.dyes || [])];
+                          newDyes[idx] = { ...newDyes[idx], name: e.target.value };
+                          setRecipeForm({ ...recipeForm, dyes: newDyes });
+                        }}
+                        placeholder="Dye color name (e.g., Ocean Blue)"
+                        style={inputStyle}
+                      />
+                      <input
+                        type="number"
+                        value={dye.amountPerOz ?? dye.dropsPerOz ?? ''}
+                        onChange={e => {
+                          const newDyes = [...(recipeForm.dyes || [])];
+                          newDyes[idx] = { ...newDyes[idx], amountPerOz: parseFloat(e.target.value) || 0 };
+                          setRecipeForm({ ...recipeForm, dyes: newDyes });
+                        }}
+                        placeholder="0"
+                        step="0.1"
+                        style={{ ...inputStyle, textAlign: 'center' }}
+                      />
+                      <select
+                        value={dye.unit || 'drops'}
+                        onChange={e => {
+                          const newDyes = [...(recipeForm.dyes || [])];
+                          newDyes[idx] = { ...newDyes[idx], unit: e.target.value };
+                          setRecipeForm({ ...recipeForm, dyes: newDyes });
+                        }}
+                        style={{ ...inputStyle, padding: '10px 8px', fontSize: '12px' }}
+                      >
+                        <option value="drops">drops/oz</option>
+                        <option value="ml">ml/oz</option>
+                        <option value="g">g/oz</option>
+                        <option value="oz">oz/oz</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          const newDyes = (recipeForm.dyes || []).filter((_, i) => i !== idx);
+                          setRecipeForm({ ...recipeForm, dyes: newDyes });
+                        }}
+                        style={{ padding: '10px', background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '8px', color: '#ff6b6b', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setRecipeForm({ ...recipeForm, dyes: [...(recipeForm.dyes || []), { name: '', amountPerOz: 0, unit: appDefaults.defaultDyeUnit || 'drops' }] })}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(162,155,254,0.15)', border: '1px dashed rgba(162,155,254,0.3)', borderRadius: '8px', color: '#a29bfe', cursor: 'pointer', fontSize: '13px', width: '100%', justifyContent: 'center' }}
+                  >
+                    <Plus size={16} /> Add Dye Color
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                  <button onClick={cancelRecipeModal} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
+                  <button onClick={saveRecipe} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}><Save size={18} /> {editingRecipe ? 'Save Changes' : 'Create Recipe'}</button>
+                </div>
               </div>
             </div>
+
+            {/* Resize Handle - Bottom Right Corner */}
+            <div
+              onMouseDown={handleModalResizeStart}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: '20px',
+                height: '20px',
+                cursor: 'se-resize',
+                background: 'linear-gradient(135deg, transparent 50%, rgba(255,159,107,0.4) 50%)',
+                borderBottomRightRadius: '16px'
+              }}
+              title="Drag to resize"
+            />
           </div>
         </div>
       )}
@@ -4732,6 +5654,46 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,107,107,0.2)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowClearConfirm(false)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
               <button onClick={confirmClearShoppingList} style={{ padding: '12px 24px', background: 'rgba(255,107,107,0.3)', border: '1px solid rgba(255,107,107,0.5)', borderRadius: '10px', color: '#ff6b6b', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}><Trash2 size={16} /> Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #2d1f3d 0%, #1a0a1e 100%)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '20px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,107,107,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Trash2 size={28} color="#ff6b6b" />
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '12px', color: '#fce4d6' }}>Delete {deleteConfirmModal.type === 'instruction' ? 'Instructions' : 'Chat'}?</h3>
+            <p style={{ color: 'rgba(252,228,214,0.7)', fontSize: '14px', marginBottom: '8px', lineHeight: 1.5 }}>
+              Are you sure you want to delete
+            </p>
+            <p style={{ color: '#feca57', fontSize: '15px', fontWeight: 500, marginBottom: '24px' }}>
+              "{deleteConfirmModal.title}"
+            </p>
+            <p style={{ color: 'rgba(252,228,214,0.5)', fontSize: '13px', marginBottom: '24px' }}>
+              This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setDeleteConfirmModal(null)}
+                style={{ padding: '12px 28px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px', fontWeight: 500, transition: 'all 0.2s' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (deleteConfirmModal.type === 'instruction') {
+                    deleteInstruction(deleteConfirmModal.id);
+                  }
+                  setDeleteConfirmModal(null);
+                }}
+                style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)', border: 'none', borderRadius: '12px', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+              >
+                <Trash2 size={16} /> Delete
+              </button>
             </div>
           </div>
         </div>
