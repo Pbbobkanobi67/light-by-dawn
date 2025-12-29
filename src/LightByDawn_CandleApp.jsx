@@ -3392,7 +3392,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 {/* Main Content Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {/* AI Conversation Section */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '500px', maxHeight: '70vh' }}>
+                  <div className="ai-chat-container" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '500px', maxHeight: '70vh' }}>
                     {/* Header */}
                     <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -3435,8 +3435,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               </div>
                             ) : msg.data ? (
                               // Structured batch instructions - full width card
-                              <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '16px', width: '100%', overflow: 'hidden' }}>
-                                <div style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div className="instruction-card" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '16px', width: '100%', overflow: 'hidden' }}>
+                                <div className="instruction-card-header" style={{ padding: '16px 20px', background: 'rgba(255,159,107,0.1)', borderBottom: '1px solid rgba(255,159,107,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                                   <div>
                                     <h4 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{msg.data.title}</h4>
                                     {msg.data.recipeVibe && <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>{msg.data.recipeVibe}</p>}
@@ -3496,7 +3496,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
                                   {/* Temperature Guide */}
                                   {msg.data.temperatures && (
-                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                                    <div className="temp-guide" style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                                       <div style={{ flex: 1, minWidth: '120px', background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '4px' }}>Melt Wax</div>
                                         <div style={{ fontSize: '16px', fontWeight: 700, color: '#ff6b6b' }}>{msg.data.temperatures.meltTemp}</div>

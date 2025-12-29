@@ -136,6 +136,70 @@ select::-webkit-scrollbar-thumb:hover {
   }
 }
 
+/* Instructions Page - Mobile responsive */
+@media (max-width: 768px) {
+  .instructions-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .instructions-sidebar {
+    order: 2 !important;
+  }
+
+  /* Unit converter inputs */
+  .converter-inputs {
+    flex-direction: column !important;
+  }
+
+  .converter-inputs select {
+    width: 100% !important;
+  }
+
+  /* AI chat container */
+  .ai-chat-container {
+    min-height: 350px !important;
+    max-height: 60vh !important;
+  }
+
+  /* Instruction card header - stack on mobile */
+  .instruction-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .instruction-card-header button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Temperature guide - better wrapping */
+  .temp-guide {
+    gap: 8px !important;
+  }
+
+  .temp-guide > div {
+    flex: 1 1 45% !important;
+    min-width: 100px !important;
+  }
+}
+
+/* Extra small screens for instructions */
+@media (max-width: 480px) {
+  .ai-chat-container {
+    min-height: 300px !important;
+    max-height: 50vh !important;
+  }
+
+  .temp-guide > div {
+    flex: 1 1 100% !important;
+  }
+
+  .instruction-card-header h4 {
+    font-size: 16px !important;
+  }
+}
+
 /* Recipe Modal - Mobile responsive */
 @media (max-width: 768px) {
   .recipe-modal {
