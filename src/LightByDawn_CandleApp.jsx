@@ -4577,7 +4577,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
               {/* Table View */}
               {recipeView === 'table' && (
-                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                <div className="table-wrapper" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,159,107,0.1)' }}>
@@ -5460,6 +5460,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000 }} onClick={cancelRecipeModal}>
           <div
             id="recipe-modal"
+            className="recipe-modal"
             onClick={e => e.stopPropagation()}
             style={{
               position: 'absolute',
@@ -5502,11 +5503,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Recipe Name *</label><input type="text" value={recipeForm.name} onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })} placeholder="e.g., Sunset Dreams" style={inputStyle} /></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="recipe-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Vibe/Theme</label><input type="text" value={recipeForm.vibe} onChange={e => setRecipeForm({ ...recipeForm, vibe: e.target.value })} placeholder="e.g., Tropical • Warm" style={inputStyle} /></div>
                   <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Style</label><input type="text" value={recipeForm.style} onChange={e => setRecipeForm({ ...recipeForm, style: e.target.value })} placeholder="e.g., Beach house luxury" style={inputStyle} /></div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                <div className="recipe-form-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                   <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Description</label><textarea value={recipeForm.description} onChange={e => setRecipeForm({ ...recipeForm, description: e.target.value })} rows={2} placeholder="Describe the scent profile..." style={{ ...inputStyle, resize: 'vertical', minHeight: '60px', maxHeight: '300px', overflow: 'auto' }} /></div>
                   <div><label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Default FO Load %</label><input type="number" value={recipeForm.foLoad} onChange={e => setRecipeForm({ ...recipeForm, foLoad: parseFloat(e.target.value) || 0 })} style={inputStyle} /><div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px' }}>Can adjust in Batch Builder</div></div>
                 </div>
@@ -5516,7 +5517,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <span style={{ fontSize: '14px', fontWeight: 600, color: recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0) === 100 ? '#55efc4' : '#ff6b6b' }}>Total: {recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0)}%</span>
                   </div>
                   {recipeForm.components.map((comp, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 100px 80px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
+                    <div key={idx} className="recipe-component-row" style={{ display: 'grid', gridTemplateColumns: '2fr 100px 80px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
                       <select value={comp.fragrance} onChange={e => updateComponent(idx, 'fragrance', e.target.value)} style={inputStyle}><option value="">Select fragrance...</option>{[...fragrances].sort((a, b) => a.name.localeCompare(b.name)).map(f => <option key={f.id} value={f.name}>{f.name} ({f.type})</option>)}</select>
                       <select value={comp.type} onChange={e => updateComponent(idx, 'type', e.target.value)} style={inputStyle}><option value="FO">FO</option><option value="EO">EO</option></select>
                       <input type="number" value={comp.percent} onChange={e => updateComponent(idx, 'percent', e.target.value)} placeholder="%" style={{ ...inputStyle, textAlign: 'center' }} />
@@ -5533,7 +5534,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '12px' }}>Configure dye colors and amount per ounce for consistent coloring. The batch builder will calculate totals based on candle size.</div>
                   {(recipeForm.dyes || []).map((dye, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 90px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
+                    <div key={idx} className="recipe-dye-row" style={{ display: 'grid', gridTemplateColumns: '2fr 80px 90px 40px', gap: '12px', marginBottom: '12px', alignItems: 'center' }}>
                       <input
                         type="text"
                         value={dye.name}

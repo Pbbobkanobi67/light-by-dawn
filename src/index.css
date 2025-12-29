@@ -51,3 +51,177 @@ select::-webkit-scrollbar-thumb {
 select::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 159, 107, 0.5);
 }
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile breakpoint: 768px and below */
+@media (max-width: 768px) {
+  /* Page Headers - Stack title and controls vertically */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .page-header-controls {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .page-header-controls > * {
+    flex: 1 1 auto !important;
+    min-width: fit-content !important;
+  }
+
+  .page-header-controls select {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  .page-header-controls button {
+    flex: 1 1 auto !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* Page title sizing */
+  .page-title {
+    font-size: 24px !important;
+  }
+
+  /* Recipe Grid - Single column on mobile */
+  .grid-container {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Recipe List View - Stack vertically */
+  .list-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .list-item .item-info {
+    width: 100% !important;
+  }
+
+  .list-item .item-price {
+    text-align: left !important;
+    margin-right: 0 !important;
+  }
+
+  .list-item .item-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .list-item .item-actions button {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+
+  /* Recipe Table View - Horizontal scroll */
+  .table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper table {
+    min-width: 600px !important;
+  }
+}
+
+/* Recipe Modal - Mobile responsive */
+@media (max-width: 768px) {
+  .recipe-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    transform: none !important;
+  }
+
+  /* Recipe modal form rows - stack vertically */
+  .recipe-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Fragrance component rows - 2x2 grid */
+  .recipe-component-row {
+    grid-template-columns: 1fr 60px !important;
+    gap: 8px !important;
+  }
+
+  .recipe-component-row > select:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .recipe-component-row > button {
+    grid-row: 2 !important;
+    grid-column: 2 !important;
+  }
+
+  /* Dye rows - 2x2 grid */
+  .recipe-dye-row {
+    grid-template-columns: 1fr 60px !important;
+    gap: 8px !important;
+  }
+
+  .recipe-dye-row > input:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .recipe-dye-row > button {
+    grid-row: 2 !important;
+    grid-column: 2 !important;
+  }
+}
+
+/* Extra small screens (phones in portrait) */
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 22px !important;
+  }
+
+  .page-header-controls {
+    gap: 6px !important;
+  }
+
+  /* Stack view toggle and other buttons */
+  .page-header-controls > div,
+  .page-header-controls > button {
+    flex: 1 1 45% !important;
+  }
+
+  /* Recipe cards - tighter padding */
+  .grid-container > div {
+    padding: 16px !important;
+  }
+
+  /* Recipe card action buttons - full width */
+  .grid-container > div > div:last-child {
+    flex-wrap: wrap !important;
+  }
+
+  .grid-container > div > div:last-child button {
+    flex: 1 1 auto !important;
+    min-width: 40px !important;
+  }
+
+  /* Recipe modal - extra padding adjustments */
+  .recipe-modal > div:last-child {
+    padding: 16px !important;
+  }
+}
