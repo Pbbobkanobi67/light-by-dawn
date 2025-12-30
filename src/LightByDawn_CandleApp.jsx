@@ -1769,14 +1769,14 @@ When providing JSON batch instructions, you MUST use this EXACT format (no markd
     { "step": 1, "title": "Prepare Workspace", "description": "Set up your pouring station with all materials within reach. Ensure containers are clean and at room temperature.", "tips": ["Work in a well-ventilated area", "Cover surfaces to protect from spills"], "duration": "10 minutes" },
     { "step": 2, "title": "Melt Wax", "description": "Add wax to double boiler and heat to 180-185°F. Stir occasionally until fully melted.", "tips": ["Use a thermometer for accuracy", "Never leave wax unattended"], "duration": "20-30 minutes" },
     { "step": 3, "title": "Prepare Containers", "description": "While wax melts, center and secure wicks in each container using wick stickers or hot glue.", "tips": ["Use wick centering tools", "Double-check wick is straight"], "duration": "10 minutes" },
-    { "step": 4, "title": "Add Fragrance", "description": "Remove wax from heat, let cool to 135-145°F, then add fragrance oil. Stir gently for 2 full minutes.", "tips": ["Don't rush the stirring", "Add fragrance off heat"], "duration": "5 minutes" },
-    { "step": 5, "title": "Pour Candles", "description": "Pour wax slowly into prepared containers at 130-140°F, leaving 1/2 inch headspace.", "tips": ["Pour slowly to minimize air bubbles", "Save some wax for top-off"], "duration": "10 minutes" },
+    { "step": 4, "title": "Add Fragrance", "description": "Remove wax from heat at 180-185°F and immediately add fragrance oil. Stir gently for 2 full minutes to ensure proper binding.", "tips": ["Add fragrance while wax is still hot for best scent throw", "Stir thoroughly but gently"], "duration": "5 minutes" },
+    { "step": 5, "title": "Pour Candles", "description": "Let wax cool to 135-145°F, then pour slowly into prepared containers, leaving 1/2 inch headspace.", "tips": ["Pour slowly to minimize air bubbles", "Save some wax for top-off"], "duration": "15-20 minutes" },
     { "step": 6, "title": "Cool and Cure", "description": "Let candles cool undisturbed for 24 hours, then cure for 1-2 weeks before burning.", "tips": ["Don't move while cooling", "Patience improves scent throw"], "duration": "24+ hours" }
   ],
   "temperatures": {
     "meltTemp": "180-185°F",
-    "addFragrance": "135-145°F",
-    "pourTemp": "130-140°F"
+    "addFragrance": "180-185°F",
+    "pourTemp": "135-145°F"
   },
   "cureTime": "1-2 weeks",
   "estimatedTime": "1.5-2 hours active, plus cooling",
