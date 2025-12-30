@@ -6,9 +6,9 @@ import { supabase } from './supabaseClient';
 const initialMaterials = [
   { id: 'W-001', category: 'Wax', name: 'Golden Brands 464 Soy Wax', vendor: 'CandleScience', unit: 'lb', packageSize: 10, packageCost: 32.95, qtyOnHand: 45, reorderPoint: 20 },
   { id: 'W-002', category: 'Wax', name: 'Coconut Soy Blend', vendor: 'Aztec', unit: 'lb', packageSize: 5, packageCost: 18.99, qtyOnHand: 15, reorderPoint: 10 },
-  { id: 'C-001', category: 'Container', name: '9oz Straight Side Jar', vendor: 'Fillmore', unit: 'case', packageSize: 12, packageCost: 24.00, qtyOnHand: 120, reorderPoint: 48 },
-  { id: 'C-002', category: 'Container', name: '6oz Tin', vendor: 'CandleScience', unit: 'case', packageSize: 24, packageCost: 36.00, qtyOnHand: 96, reorderPoint: 48 },
-  { id: 'C-003', category: 'Container', name: '4oz Small Tin', vendor: 'Amazon', unit: 'case', packageSize: 24, packageCost: 28.00, qtyOnHand: 144, reorderPoint: 72 },
+  { id: 'C-001', category: 'Container', name: '9oz Straight Side Jar', vendor: 'Fillmore', unit: 'case', packageSize: 12, packageCost: 24.00, qtyOnHand: 120, reorderPoint: 48, fillCapacity: 8.2 },
+  { id: 'C-002', category: 'Container', name: '6oz Tin', vendor: 'CandleScience', unit: 'case', packageSize: 24, packageCost: 36.00, qtyOnHand: 96, reorderPoint: 48, fillCapacity: 5.5 },
+  { id: 'C-003', category: 'Container', name: '4oz Small Tin', vendor: 'Amazon', unit: 'case', packageSize: 24, packageCost: 28.00, qtyOnHand: 144, reorderPoint: 72, fillCapacity: 3.5 },
   { id: 'K-001', category: 'Wick', name: 'CD-10 Wicks', vendor: 'CandleScience', unit: 'pack', packageSize: 100, packageCost: 12.99, qtyOnHand: 350, reorderPoint: 100 },
   { id: 'K-002', category: 'Wick', name: 'CD-18 Wicks', vendor: 'CandleScience', unit: 'pack', packageSize: 100, packageCost: 12.99, qtyOnHand: 280, reorderPoint: 100 },
   { id: 'L-001', category: 'Label', name: '2 inch Round Kraft Labels', vendor: 'Amazon', unit: 'roll', packageSize: 500, packageCost: 14.99, qtyOnHand: 800, reorderPoint: 200 },
@@ -221,7 +221,7 @@ export default function CandleBusinessApp() {
 
   // Form states
   const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [] });
-  const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0 });
+  const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0, fillCapacity: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
   // Fragrance page state
@@ -2541,16 +2541,26 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           }
 
           /* Instructions page responsive */
-          .instructions-layout { flex-direction: column !important; }
+          .instructions-layout {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 16px !important;
+          }
           .instructions-sidebar {
             width: 100% !important;
-            max-height: 200px !important;
+            max-height: none !important;
             order: 2 !important;
           }
           .instructions-main { order: 1 !important; }
           .chat-input-row { flex-direction: column !important; gap: 8px !important; }
           .chat-input { font-size: 14px !important; }
           .chat-message { padding: 12px !important; font-size: 13px !important; }
+          .instruction-card { max-width: 100% !important; overflow-x: hidden !important; }
+          .instruction-card-header { flex-direction: column !important; align-items: flex-start !important; }
+          .instruction-card-header button { width: 100% !important; justify-content: center !important; }
+          .temp-guide { flex-direction: column !important; }
+          .temp-guide > div { min-width: auto !important; }
+          .warnings-tips-grid { grid-template-columns: 1fr !important; }
 
           /* Shopping list responsive */
           .shopping-summary {
@@ -2981,9 +2991,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Container</label>
                             <select value={currentBatch.container} onChange={e => {
                               const m = materials.find(mat => mat.name === e.target.value);
-                              // Auto-detect size from container name (e.g., "9oz Jar" -> 9)
-                              const sizeMatch = e.target.value.match(/(\d+(?:\.\d+)?)\s*oz/i);
-                              const detectedSize = sizeMatch ? parseFloat(sizeMatch[1]) : currentBatch.size;
+                              // Use fillCapacity if available, otherwise detect from name
+                              let detectedSize = currentBatch.size;
+                              if (m?.fillCapacity) {
+                                detectedSize = m.fillCapacity;
+                              } else {
+                                const sizeMatch = e.target.value.match(/(\d+(?:\.\d+)?)\s*oz/i);
+                                if (sizeMatch) detectedSize = parseFloat(sizeMatch[1]);
+                              }
                               setCurrentBatch({
                                 ...currentBatch,
                                 container: e.target.value,
@@ -2992,7 +3007,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               });
                             }} style={{ ...inputStyle, padding: '8px', fontSize: '12px' }}>
                               <option value="">Select container...</option>
-                              {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                              {materials.filter(m => m.category === 'Container').map(m => (
+                                <option key={m.id} value={m.name}>
+                                  {m.name}{m.fillCapacity ? ` (fills ${m.fillCapacity}oz)` : ''}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
@@ -3099,8 +3118,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           <input type="number" value={currentBatch.quantity} onChange={e => setCurrentBatch({ ...currentBatch, quantity: parseInt(e.target.value) || 0 })} style={inputStyle} />
                         </div>
                         <div>
-                          <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Size (oz)</label>
-                          <input type="number" value={currentBatch.size} onChange={e => setCurrentBatch({ ...currentBatch, size: parseFloat(e.target.value) || 0 })} style={inputStyle} />
+                          <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Fill Amount (oz)</label>
+                          <input type="number" step="0.1" value={currentBatch.size} onChange={e => setCurrentBatch({ ...currentBatch, size: parseFloat(e.target.value) || 0 })} style={inputStyle} />
                         </div>
                       </div>
 
@@ -3114,11 +3133,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Fill Breakdown (per candle)</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
                           <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
-                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>GROSS (Total)</div>
+                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>Fill Amount</div>
                             <div style={{ fontWeight: 600, color: '#feca57' }}>{currentBatch.size} oz</div>
                           </div>
                           <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
-                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>NET (Wax)</div>
+                            <div style={{ color: 'rgba(252,228,214,0.5)', fontSize: '10px' }}>Wax</div>
                             <div style={{ fontWeight: 600 }}>{(currentBatch.size * (1 - currentBatch.foLoad)).toFixed(2)} oz</div>
                           </div>
                           <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px' }}>
@@ -3126,15 +3145,15 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             <div style={{ fontWeight: 600, color: '#ff9ff3' }}>{(currentBatch.size * currentBatch.foLoad).toFixed(2)} oz</div>
                           </div>
                         </div>
-                        {/* Container size mismatch warning */}
+                        {/* Container info */}
                         {currentBatch.container && (() => {
+                          const m = materials.find(mat => mat.name === currentBatch.container);
                           const containerSizeMatch = currentBatch.container.match(/(\d+(?:\.\d+)?)\s*oz/i);
-                          const containerSize = containerSizeMatch ? parseFloat(containerSizeMatch[1]) : null;
-                          if (containerSize && Math.abs(containerSize - currentBatch.size) > 0.5) {
+                          const labelSize = containerSizeMatch ? parseFloat(containerSizeMatch[1]) : null;
+                          if (m?.fillCapacity && labelSize) {
                             return (
-                              <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,107,107,0.15)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#ff6b6b' }}>
-                                <AlertTriangle size={14} />
-                                Container is {containerSize}oz but size is set to {currentBatch.size}oz
+                              <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(116,185,255,0.1)', borderRadius: '6px', fontSize: '11px', color: '#74b9ff' }}>
+                                Container labeled {labelSize}oz, actual fill capacity: {m.fillCapacity}oz
                               </div>
                             );
                           }
@@ -3380,7 +3399,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
           {/* Instructions Page */}
           {activeTab === 'instructions' && (
-            <div>
+            <div style={{ overflow: 'hidden', maxWidth: '100%' }}>
               <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Instructions</h2>
@@ -3543,7 +3562,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                   )}
 
                                   {/* Warnings & Pro Tips */}
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                  <div className="warnings-tips-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                     {msg.data.warnings && msg.data.warnings.length > 0 && (
                                       <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: '12px', padding: '14px' }}>
                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff6b6b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -5271,7 +5290,16 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px', display: 'block' }}>Total cost of package</span>
                 </div>
               </div>
-              
+
+              {/* Fill Capacity - Container only */}
+              {materialForm.category === 'Container' && (
+                <div style={{ background: 'rgba(116,185,255,0.1)', border: '1px solid rgba(116,185,255,0.2)', borderRadius: '10px', padding: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#74b9ff', marginBottom: '6px', fontWeight: 600 }}>Actual Fill Capacity (oz)</label>
+                  <input type="number" step="0.1" value={materialForm.fillCapacity || ''} onChange={e => setMaterialForm({ ...materialForm, fillCapacity: parseFloat(e.target.value) || 0 })} placeholder="e.g., 8.2" style={inputStyle} />
+                  <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginTop: '4px', display: 'block' }}>How much liquid the container actually holds (accounting for lid clearance and wick)</span>
+                </div>
+              )}
+
               {/* Inventory Section */}
               <div style={{ borderTop: '1px solid rgba(255,159,107,0.2)', paddingTop: '16px', marginTop: '8px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#feca57', marginBottom: '12px' }}>Inventory Tracking</h4>
