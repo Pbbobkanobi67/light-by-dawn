@@ -544,6 +544,9 @@ export default function CandleBusinessApp() {
   const [receiveForm, setReceiveForm] = useState({ materialId: '', quantity: 0 });
   const [showLogBatchModal, setShowLogBatchModal] = useState(false);
   const [logBatchForm, setLogBatchForm] = useState({ recipe: '', quantity: 12, size: 4, notes: '', autoDeduct: true });
+  const [showQuickLogModal, setShowQuickLogModal] = useState(false);
+  const [quickLogBatch, setQuickLogBatch] = useState(null);
+  const [quickLogNotes, setQuickLogNotes] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportText, setExportText] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -1153,17 +1156,29 @@ export default function CandleBusinessApp() {
     setBatchList(batchList.filter(b => b.id !== id));
   };
 
-  const logBatch = (batch) => {
-    // Add to batch history with timestamp
+  const openQuickLogModal = (batch) => {
+    setQuickLogBatch(batch);
+    setQuickLogNotes('');
+    setShowQuickLogModal(true);
+  };
+
+  const confirmLogBatch = () => {
+    if (!quickLogBatch) return;
+    // Add to batch history with timestamp and notes
     const loggedBatch = {
-      ...batch,
+      ...quickLogBatch,
       id: Date.now(),
       loggedAt: new Date().toISOString(),
-      status: 'completed'
+      status: 'completed',
+      notes: quickLogNotes
     };
     setBatchHistory([loggedBatch, ...batchHistory]);
     // Remove from batches to build
-    setBatchList(batchList.filter(b => b.id !== batch.id));
+    setBatchList(batchList.filter(b => b.id !== quickLogBatch.id));
+    // Close modal
+    setShowQuickLogModal(false);
+    setQuickLogBatch(null);
+    setQuickLogNotes('');
   };
 
   const resetCurrentBatch = () => {
@@ -3443,7 +3458,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                     // Scroll to top of batch details
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#feca57', cursor: 'pointer' }} title="Edit"><Edit2 size={14} /></button>
-                                  <button onClick={() => logBatch(b)} style={{ background: 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#a29bfe', cursor: 'pointer' }} title="Log Batch"><CheckCircle size={14} /></button>
+                                  <button onClick={() => openQuickLogModal(b)} style={{ background: 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#a29bfe', cursor: 'pointer' }} title="Log Batch"><CheckCircle size={14} /></button>
                                   <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }} title="Delete"><Trash2 size={14} /></button>
                                 </div>
                               </td>
@@ -5149,7 +5164,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <>
                   <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr style={{ background: 'rgba(255,159,107,0.1)' }}>{['Date', 'Recipe', 'Qty', 'Size', 'Cost/Each', 'Batch Cost', 'Status', 'Actions'].map(h => (<th key={h} style={{ padding: '14px 12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>))}</tr></thead>
+                      <thead><tr style={{ background: 'rgba(255,159,107,0.1)' }}>{['Date', 'Recipe', 'Qty', 'Size', 'Cost/Each', 'Batch Cost', 'Status', 'Notes', 'Actions'].map(h => (<th key={h} style={{ padding: '14px 12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>))}</tr></thead>
                       <tbody>
                         {batchHistory.map(b => {
                           // Support both old format (qty, date, cost) and new format (quantity, loggedAt, calculated cost)
@@ -5168,6 +5183,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <td style={{ padding: '14px 12px' }}>{formatCurrency(costPerCandle)}</td>
                               <td style={{ padding: '14px 12px' }}>{formatCurrency(batchCost)}</td>
                               <td style={{ padding: '14px 12px' }}><span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500, background: status === 'completed' ? 'rgba(85,239,196,0.2)' : status === 'Ready' ? 'rgba(85,239,196,0.2)' : 'rgba(254,202,87,0.2)', color: status === 'completed' ? '#55efc4' : status === 'Ready' ? '#55efc4' : '#feca57' }}>{status === 'completed' ? 'Completed' : status}</span></td>
+                              <td style={{ padding: '14px 12px', color: 'rgba(252,228,214,0.6)', fontSize: '12px', maxWidth: '200px' }}>{b.notes || '-'}</td>
                               <td style={{ padding: '14px 12px' }}>
                                 <button onClick={() => {
                                   if (confirm('Delete this batch from history?')) {
@@ -5615,6 +5631,46 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <button onClick={() => setShowLogBatchModal(false)} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
                 <button onClick={logNewBatch} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}><Save size={18} /> Log Batch</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Log Batch Modal (from Batch Builder list) */}
+      {showQuickLogModal && quickLogBatch && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '20px', padding: '32px', width: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Log Batch</h2>
+              <button onClick={() => setShowQuickLogModal(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+
+            {/* Batch Summary */}
+            <div style={{ background: 'rgba(162,155,254,0.1)', border: '1px solid rgba(162,155,254,0.2)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>{quickLogBatch.recipe}</div>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: 'rgba(252,228,214,0.7)' }}>
+                <span>{quickLogBatch.quantity} candles</span>
+                <span>{quickLogBatch.size} oz</span>
+                <span style={{ color: '#55efc4' }}>{formatCurrency(calculateBatch(quickLogBatch).totalBatchCost)} total</span>
+              </div>
+            </div>
+
+            {/* Notes Field */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Notes (optional)</label>
+              <textarea
+                value={quickLogNotes}
+                onChange={e => setQuickLogNotes(e.target.value)}
+                rows={3}
+                placeholder="Any notes about this batch... (e.g., pour temp, issues, observations)"
+                style={{ ...inputStyle, resize: 'vertical' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowQuickLogModal(false)} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
+              <button onClick={confirmLogBatch} style={{ ...btnPrimary, flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)' }}><CheckCircle size={18} /> Log Batch</button>
             </div>
           </div>
         </div>
