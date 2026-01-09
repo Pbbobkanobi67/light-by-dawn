@@ -723,16 +723,28 @@ export default function CandleBusinessApp() {
   }, [batchList, recipes]);
 
   // Stats for dashboard
-  const stats = useMemo(() => ({
-    totalBatches: batchHistory.length,
-    totalCandles: batchHistory.reduce((sum, b) => sum + b.qty, 0),
-    totalInvestment: batchHistory.reduce((sum, b) => sum + b.cost, 0),
-    avgHotThrow: batchHistory.filter(b => b.hotThrow).reduce((sum, b, _, arr) => sum + b.hotThrow / arr.length, 0),
-    recipesCount: recipes.length,
-    fragrancesCount: fragrances.length,
-    pendingBatches: batchList.length,
-    pendingCandles: batchList.reduce((sum, b) => sum + b.quantity, 0),
-  }), [batchHistory, recipes, fragrances, batchList]);
+  const stats = useMemo(() => {
+    // Calculate totals supporting both old and new batch formats
+    const totalCandles = batchHistory.reduce((sum, b) => sum + (b.quantity || b.qty || 0), 0);
+    const totalInvestment = batchHistory.reduce((sum, b) => {
+      if (b.cost) return sum + b.cost;
+      if (b.waxCostPerOz !== undefined) {
+        const calc = calculateBatch(b);
+        return sum + calc.totalBatchCost;
+      }
+      return sum;
+    }, 0);
+    return {
+      totalBatches: batchHistory.length,
+      totalCandles,
+      totalInvestment,
+      avgHotThrow: batchHistory.filter(b => b.hotThrow).reduce((sum, b, _, arr) => sum + b.hotThrow / arr.length, 0),
+      recipesCount: recipes.length,
+      fragrancesCount: fragrances.length,
+      pendingBatches: batchList.length,
+      pendingCandles: batchList.reduce((sum, b) => sum + b.quantity, 0),
+    };
+  }, [batchHistory, recipes, fragrances, batchList]);
 
   // Low stock items
   const lowStockItems = useMemo(() => {
@@ -5137,23 +5149,35 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <>
                   <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr style={{ background: 'rgba(255,159,107,0.1)' }}>{['Batch', 'Date', 'Recipe', 'Qty', 'Size', 'Cost', 'Cure End', 'Hot', 'Cold', 'Status', 'Notes'].map(h => (<th key={h} style={{ padding: '14px 12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>))}</tr></thead>
+                      <thead><tr style={{ background: 'rgba(255,159,107,0.1)' }}>{['Date', 'Recipe', 'Qty', 'Size', 'Cost/Each', 'Batch Cost', 'Status', 'Actions'].map(h => (<th key={h} style={{ padding: '14px 12px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'rgba(252,228,214,0.6)' }}>{h}</th>))}</tr></thead>
                       <tbody>
-                        {batchHistory.map(b => (
-                          <tr key={b.id} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
-                            <td style={{ padding: '14px 12px', fontFamily: 'monospace', fontSize: '12px' }}>{b.id}</td>
-                            <td style={{ padding: '14px 12px', color: 'rgba(252,228,214,0.7)' }}>{b.date}</td>
-                            <td style={{ padding: '14px 12px', fontWeight: 500 }}>{b.recipe}</td>
-                            <td style={{ padding: '14px 12px' }}>{b.qty}</td>
-                            <td style={{ padding: '14px 12px' }}>{b.size} oz</td>
-                            <td style={{ padding: '14px 12px' }}>{formatCurrency(b.cost)}</td>
-                            <td style={{ padding: '14px 12px', color: 'rgba(252,228,214,0.6)' }}>{b.cureEnd}</td>
-                            <td style={{ padding: '14px 12px', color: b.hotThrow >= 8 ? '#55efc4' : b.hotThrow ? '#feca57' : 'rgba(252,228,214,0.3)' }}>{b.hotThrow || '-'}</td>
-                            <td style={{ padding: '14px 12px', color: b.coldThrow >= 8 ? '#55efc4' : b.coldThrow ? '#feca57' : 'rgba(252,228,214,0.3)' }}>{b.coldThrow || '-'}</td>
-                            <td style={{ padding: '14px 12px' }}><span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500, background: b.status === 'Ready' ? 'rgba(85,239,196,0.2)' : 'rgba(254,202,87,0.2)', color: b.status === 'Ready' ? '#55efc4' : '#feca57' }}>{b.status}</span></td>
-                            <td style={{ padding: '14px 12px', color: 'rgba(252,228,214,0.6)', fontSize: '13px' }}>{b.notes}</td>
-                          </tr>
-                        ))}
+                        {batchHistory.map(b => {
+                          // Support both old format (qty, date, cost) and new format (quantity, loggedAt, calculated cost)
+                          const qty = b.quantity || b.qty || 0;
+                          const date = b.loggedAt ? new Date(b.loggedAt).toLocaleDateString() : b.date || '-';
+                          const calc = b.waxCostPerOz !== undefined ? calculateBatch(b) : null;
+                          const costPerCandle = calc ? calc.totalCostPerCandle : (b.cost / qty) || 0;
+                          const batchCost = calc ? calc.totalBatchCost : b.cost || 0;
+                          const status = b.status || 'Curing';
+                          return (
+                            <tr key={b.id} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
+                              <td style={{ padding: '14px 12px', color: 'rgba(252,228,214,0.7)' }}>{date}</td>
+                              <td style={{ padding: '14px 12px', fontWeight: 500 }}>{b.recipe}</td>
+                              <td style={{ padding: '14px 12px' }}>{qty}</td>
+                              <td style={{ padding: '14px 12px' }}>{b.size} oz</td>
+                              <td style={{ padding: '14px 12px' }}>{formatCurrency(costPerCandle)}</td>
+                              <td style={{ padding: '14px 12px' }}>{formatCurrency(batchCost)}</td>
+                              <td style={{ padding: '14px 12px' }}><span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500, background: status === 'completed' ? 'rgba(85,239,196,0.2)' : status === 'Ready' ? 'rgba(85,239,196,0.2)' : 'rgba(254,202,87,0.2)', color: status === 'completed' ? '#55efc4' : status === 'Ready' ? '#55efc4' : '#feca57' }}>{status === 'completed' ? 'Completed' : status}</span></td>
+                              <td style={{ padding: '14px 12px' }}>
+                                <button onClick={() => {
+                                  if (confirm('Delete this batch from history?')) {
+                                    setBatchHistory(batchHistory.filter(h => h.id !== b.id));
+                                  }
+                                }} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }} title="Delete"><Trash2 size={14} /></button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
