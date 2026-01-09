@@ -340,6 +340,105 @@ export default function CandleBusinessApp() {
     loadFromSupabase();
   }, []);
 
+  // Real-time subscriptions for cross-device sync
+  useEffect(() => {
+    // Subscribe to batch_list changes
+    const batchListChannel = supabase
+      .channel('batch_list_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_list' }, async () => {
+        // Fetch fresh data when any change is detected
+        const { data } = await supabase.from('batch_list').select('*');
+        if (data) {
+          setBatchList(toCamelCase(data));
+          loadedCountsRef.current.batchList = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to batch_history changes
+    const batchHistoryChannel = supabase
+      .channel('batch_history_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_history' }, async () => {
+        const { data } = await supabase.from('batch_history').select('*');
+        if (data) {
+          setBatchHistory(toCamelCase(data));
+          loadedCountsRef.current.batchHistory = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to materials changes
+    const materialsChannel = supabase
+      .channel('materials_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, async () => {
+        const { data } = await supabase.from('materials').select('*');
+        if (data) {
+          setMaterials(toCamelCase(data));
+          loadedCountsRef.current.materials = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to fragrances changes
+    const fragrancesChannel = supabase
+      .channel('fragrances_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fragrances' }, async () => {
+        const { data } = await supabase.from('fragrances').select('*');
+        if (data) {
+          setFragrances(toCamelCase(data));
+          loadedCountsRef.current.fragrances = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to recipes changes
+    const recipesChannel = supabase
+      .channel('recipes_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, async () => {
+        const { data } = await supabase.from('recipes').select('*');
+        if (data) {
+          setRecipes(toCamelCase(data));
+          loadedCountsRef.current.recipes = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to saved_instructions changes
+    const savedInstructionsChannel = supabase
+      .channel('saved_instructions_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_instructions' }, async () => {
+        const { data } = await supabase.from('saved_instructions').select('*');
+        if (data) {
+          setSavedInstructions(toCamelCase(data));
+          loadedCountsRef.current.savedInstructions = data.length;
+        }
+      })
+      .subscribe();
+
+    // Subscribe to saved_chats changes
+    const savedChatsChannel = supabase
+      .channel('saved_chats_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_chats' }, async () => {
+        const { data } = await supabase.from('saved_chats').select('*');
+        if (data) {
+          setSavedChats(toCamelCase(data));
+          loadedCountsRef.current.savedChats = data.length;
+        }
+      })
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(batchListChannel);
+      supabase.removeChannel(batchHistoryChannel);
+      supabase.removeChannel(materialsChannel);
+      supabase.removeChannel(fragrancesChannel);
+      supabase.removeChannel(recipesChannel);
+      supabase.removeChannel(savedInstructionsChannel);
+      supabase.removeChannel(savedChatsChannel);
+    };
+  }, []);
+
   // Save to Supabase helper
   const syncToSupabase = useCallback(async (table, data) => {
     try {
@@ -1040,6 +1139,19 @@ export default function CandleBusinessApp() {
 
   const removeBatchFromList = (id) => {
     setBatchList(batchList.filter(b => b.id !== id));
+  };
+
+  const logBatch = (batch) => {
+    // Add to batch history with timestamp
+    const loggedBatch = {
+      ...batch,
+      id: Date.now(),
+      loggedAt: new Date().toISOString(),
+      status: 'completed'
+    };
+    setBatchHistory([loggedBatch, ...batchHistory]);
+    // Remove from batches to build
+    setBatchList(batchList.filter(b => b.id !== batch.id));
   };
 
   const resetCurrentBatch = () => {
@@ -3319,6 +3431,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                     // Scroll to top of batch details
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                   }} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#feca57', cursor: 'pointer' }} title="Edit"><Edit2 size={14} /></button>
+                                  <button onClick={() => logBatch(b)} style={{ background: 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#a29bfe', cursor: 'pointer' }} title="Log Batch"><CheckCircle size={14} /></button>
                                   <button onClick={() => removeBatchFromList(b.id)} style={{ background: 'rgba(255,107,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#ff6b6b', cursor: 'pointer' }} title="Delete"><Trash2 size={14} /></button>
                                 </div>
                               </td>

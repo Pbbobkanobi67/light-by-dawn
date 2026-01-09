@@ -177,3 +177,17 @@ CREATE POLICY "Allow public read" ON saved_chats FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON saved_chats FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON saved_chats FOR UPDATE USING (true);
 CREATE POLICY "Allow public delete" ON saved_chats FOR DELETE USING (true);
+
+-- ============================================
+-- REALTIME: Enable real-time sync for all tables
+-- Run this to enable cross-device sync
+-- ============================================
+
+-- Enable realtime for all tables (run in Supabase SQL Editor)
+ALTER PUBLICATION supabase_realtime ADD TABLE materials;
+ALTER PUBLICATION supabase_realtime ADD TABLE fragrances;
+ALTER PUBLICATION supabase_realtime ADD TABLE recipes;
+ALTER PUBLICATION supabase_realtime ADD TABLE batch_history;
+ALTER PUBLICATION supabase_realtime ADD TABLE batch_list;
+ALTER PUBLICATION supabase_realtime ADD TABLE saved_instructions;
+ALTER PUBLICATION supabase_realtime ADD TABLE saved_chats;
