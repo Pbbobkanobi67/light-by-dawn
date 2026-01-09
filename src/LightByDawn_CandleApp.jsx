@@ -342,16 +342,25 @@ export default function CandleBusinessApp() {
 
   // Real-time subscriptions for cross-device sync
   useEffect(() => {
+    // Helper to safely update state - never overwrite with empty if we had data
+    const safeUpdateState = (setter, data, key) => {
+      if (!data) return;
+      // Only update if we have data OR if we're clearing intentionally (loaded count is 0)
+      const prevCount = loadedCountsRef.current[key] || 0;
+      if (data.length === 0 && prevCount > 0) {
+        console.warn(`Blocked realtime update: would clear ${key} (had ${prevCount} items)`);
+        return;
+      }
+      setter(toCamelCase(data));
+      loadedCountsRef.current[key] = data.length;
+    };
+
     // Subscribe to batch_list changes
     const batchListChannel = supabase
       .channel('batch_list_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_list' }, async () => {
-        // Fetch fresh data when any change is detected
         const { data } = await supabase.from('batch_list').select('*');
-        if (data) {
-          setBatchList(toCamelCase(data));
-          loadedCountsRef.current.batchList = data.length;
-        }
+        safeUpdateState(setBatchList, data, 'batchList');
       })
       .subscribe();
 
@@ -360,10 +369,7 @@ export default function CandleBusinessApp() {
       .channel('batch_history_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_history' }, async () => {
         const { data } = await supabase.from('batch_history').select('*');
-        if (data) {
-          setBatchHistory(toCamelCase(data));
-          loadedCountsRef.current.batchHistory = data.length;
-        }
+        safeUpdateState(setBatchHistory, data, 'batchHistory');
       })
       .subscribe();
 
@@ -372,10 +378,7 @@ export default function CandleBusinessApp() {
       .channel('materials_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, async () => {
         const { data } = await supabase.from('materials').select('*');
-        if (data) {
-          setMaterials(toCamelCase(data));
-          loadedCountsRef.current.materials = data.length;
-        }
+        safeUpdateState(setMaterials, data, 'materials');
       })
       .subscribe();
 
@@ -384,10 +387,7 @@ export default function CandleBusinessApp() {
       .channel('fragrances_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fragrances' }, async () => {
         const { data } = await supabase.from('fragrances').select('*');
-        if (data) {
-          setFragrances(toCamelCase(data));
-          loadedCountsRef.current.fragrances = data.length;
-        }
+        safeUpdateState(setFragrances, data, 'fragrances');
       })
       .subscribe();
 
@@ -396,10 +396,7 @@ export default function CandleBusinessApp() {
       .channel('recipes_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, async () => {
         const { data } = await supabase.from('recipes').select('*');
-        if (data) {
-          setRecipes(toCamelCase(data));
-          loadedCountsRef.current.recipes = data.length;
-        }
+        safeUpdateState(setRecipes, data, 'recipes');
       })
       .subscribe();
 
@@ -408,10 +405,7 @@ export default function CandleBusinessApp() {
       .channel('saved_instructions_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_instructions' }, async () => {
         const { data } = await supabase.from('saved_instructions').select('*');
-        if (data) {
-          setSavedInstructions(toCamelCase(data));
-          loadedCountsRef.current.savedInstructions = data.length;
-        }
+        safeUpdateState(setSavedInstructions, data, 'savedInstructions');
       })
       .subscribe();
 
@@ -420,10 +414,7 @@ export default function CandleBusinessApp() {
       .channel('saved_chats_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_chats' }, async () => {
         const { data } = await supabase.from('saved_chats').select('*');
-        if (data) {
-          setSavedChats(toCamelCase(data));
-          loadedCountsRef.current.savedChats = data.length;
-        }
+        safeUpdateState(setSavedChats, data, 'savedChats');
       })
       .subscribe();
 
