@@ -340,95 +340,9 @@ export default function CandleBusinessApp() {
     loadFromSupabase();
   }, []);
 
-  // Real-time subscriptions for cross-device sync
-  useEffect(() => {
-    // Helper to safely update state - never overwrite with empty if we had data
-    const safeUpdateState = (setter, data, key) => {
-      if (!data) return;
-      // Only update if we have data OR if we're clearing intentionally (loaded count is 0)
-      const prevCount = loadedCountsRef.current[key] || 0;
-      if (data.length === 0 && prevCount > 0) {
-        console.warn(`Blocked realtime update: would clear ${key} (had ${prevCount} items)`);
-        return;
-      }
-      setter(toCamelCase(data));
-      loadedCountsRef.current[key] = data.length;
-    };
-
-    // Subscribe to batch_list changes
-    const batchListChannel = supabase
-      .channel('batch_list_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_list' }, async () => {
-        const { data } = await supabase.from('batch_list').select('*');
-        safeUpdateState(setBatchList, data, 'batchList');
-      })
-      .subscribe();
-
-    // Subscribe to batch_history changes
-    const batchHistoryChannel = supabase
-      .channel('batch_history_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'batch_history' }, async () => {
-        const { data } = await supabase.from('batch_history').select('*');
-        safeUpdateState(setBatchHistory, data, 'batchHistory');
-      })
-      .subscribe();
-
-    // Subscribe to materials changes
-    const materialsChannel = supabase
-      .channel('materials_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, async () => {
-        const { data } = await supabase.from('materials').select('*');
-        safeUpdateState(setMaterials, data, 'materials');
-      })
-      .subscribe();
-
-    // Subscribe to fragrances changes
-    const fragrancesChannel = supabase
-      .channel('fragrances_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fragrances' }, async () => {
-        const { data } = await supabase.from('fragrances').select('*');
-        safeUpdateState(setFragrances, data, 'fragrances');
-      })
-      .subscribe();
-
-    // Subscribe to recipes changes
-    const recipesChannel = supabase
-      .channel('recipes_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, async () => {
-        const { data } = await supabase.from('recipes').select('*');
-        safeUpdateState(setRecipes, data, 'recipes');
-      })
-      .subscribe();
-
-    // Subscribe to saved_instructions changes
-    const savedInstructionsChannel = supabase
-      .channel('saved_instructions_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_instructions' }, async () => {
-        const { data } = await supabase.from('saved_instructions').select('*');
-        safeUpdateState(setSavedInstructions, data, 'savedInstructions');
-      })
-      .subscribe();
-
-    // Subscribe to saved_chats changes
-    const savedChatsChannel = supabase
-      .channel('saved_chats_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_chats' }, async () => {
-        const { data } = await supabase.from('saved_chats').select('*');
-        safeUpdateState(setSavedChats, data, 'savedChats');
-      })
-      .subscribe();
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      supabase.removeChannel(batchListChannel);
-      supabase.removeChannel(batchHistoryChannel);
-      supabase.removeChannel(materialsChannel);
-      supabase.removeChannel(fragrancesChannel);
-      supabase.removeChannel(recipesChannel);
-      supabase.removeChannel(savedInstructionsChannel);
-      supabase.removeChannel(savedChatsChannel);
-    };
-  }, []);
+  // Real-time subscriptions DISABLED - was causing data wipes
+  // Data syncs to Supabase on save and loads fresh on page refresh
+  // For now, refresh the page to see changes from other devices
 
   // Save to Supabase helper
   const syncToSupabase = useCallback(async (table, data) => {
