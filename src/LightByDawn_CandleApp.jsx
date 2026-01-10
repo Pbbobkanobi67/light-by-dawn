@@ -371,11 +371,18 @@ export default function CandleBusinessApp() {
     }
   }, [dataLoaded]);
 
-  // Safe sync function - NEVER syncs empty data if we loaded real data
+  // Safe sync function - protects against accidental data wipes
   const safeSyncToSupabase = useCallback(async (table, data, loadedKey) => {
     if (!syncEnabledRef.current) return;
 
-    // CRITICAL: Never sync empty/small data if we loaded more data
+    // CRITICAL: Never sync empty core data (materials, fragrances, recipes)
+    const coreDataTables = ['materials', 'fragrances', 'recipes'];
+    if (coreDataTables.includes(table) && data.length === 0) {
+      console.warn(`BLOCKED: Cannot sync empty ${table} - this would wipe core data!`);
+      return;
+    }
+
+    // For other tables, check against loaded count
     const loadedCount = loadedCountsRef.current[loadedKey] || 0;
     if (data.length < loadedCount && loadedCount > 0) {
       console.warn(`BLOCKED: Attempted to sync ${data.length} items to ${table} but loaded ${loadedCount}. This would wipe data!`);
