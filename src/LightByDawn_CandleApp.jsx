@@ -6430,12 +6430,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <input type="text" value={materialForm.vendor} onChange={e => setMaterialForm({ ...materialForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
                   {materialForm.vendor && (
                     <>
-                      {materialForm.vendor.startsWith('http') && materialForm.vendor.length > 50 && !materialForm.vendor.includes('is.gd') && (
+                      {(materialForm.vendor.startsWith('http') || materialForm.vendor.includes('amazon.com') || materialForm.vendor.includes('.com/')) && materialForm.vendor.length > 50 && !materialForm.vendor.includes('is.gd') && (
                         <button
                           type="button"
                           onClick={async () => {
-                            const short = await shortenUrl(materialForm.vendor);
-                            if (short !== materialForm.vendor) {
+                            let url = materialForm.vendor;
+                            if (!url.startsWith('http')) url = 'https://' + url;
+                            const short = await shortenUrl(url);
+                            if (short !== url) {
                               setMaterialForm({ ...materialForm, vendor: short });
                             }
                           }}
@@ -6557,12 +6559,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <input type="text" value={fragranceForm.vendor} onChange={e => setFragranceForm({ ...fragranceForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
                     {fragranceForm.vendor && (
                       <>
-                        {fragranceForm.vendor.startsWith('http') && fragranceForm.vendor.length > 50 && !fragranceForm.vendor.includes('is.gd') && (
+                        {(fragranceForm.vendor.startsWith('http') || fragranceForm.vendor.includes('amazon.com') || fragranceForm.vendor.includes('.com/')) && fragranceForm.vendor.length > 50 && !fragranceForm.vendor.includes('is.gd') && (
                           <button
                             type="button"
                             onClick={async () => {
-                              const short = await shortenUrl(fragranceForm.vendor);
-                              if (short !== fragranceForm.vendor) {
+                              let url = fragranceForm.vendor;
+                              if (!url.startsWith('http')) url = 'https://' + url;
+                              const short = await shortenUrl(url);
+                              if (short !== url) {
                                 setFragranceForm({ ...fragranceForm, vendor: short });
                               }
                             }}
