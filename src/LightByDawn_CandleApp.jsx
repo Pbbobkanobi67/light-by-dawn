@@ -190,15 +190,15 @@ const toCamelCase = (obj) => {
   );
 };
 
-// Shorten long URLs (especially Amazon) using TinyURL
+// Shorten long URLs (especially Amazon) using is.gd (no interstitial page)
 const shortenUrl = async (url) => {
   // Only shorten if URL is long or is Amazon
   if (url.length < 80 && !url.includes('amazon.com')) return url;
   try {
-    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+    const response = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`);
     if (response.ok) {
       const shortUrl = await response.text();
-      if (shortUrl.startsWith('http')) return shortUrl;
+      if (shortUrl.startsWith('http')) return shortUrl.trim();
     }
   } catch (error) {
     console.warn('URL shortening failed:', error);
@@ -6430,7 +6430,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <input type="text" value={materialForm.vendor} onChange={e => setMaterialForm({ ...materialForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
                   {materialForm.vendor && (
                     <>
-                      {materialForm.vendor.startsWith('http') && materialForm.vendor.length > 50 && !materialForm.vendor.includes('tinyurl.com') && (
+                      {materialForm.vendor.startsWith('http') && materialForm.vendor.length > 50 && !materialForm.vendor.includes('is.gd') && (
                         <button
                           type="button"
                           onClick={async () => {
@@ -6557,7 +6557,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <input type="text" value={fragranceForm.vendor} onChange={e => setFragranceForm({ ...fragranceForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
                     {fragranceForm.vendor && (
                       <>
-                        {fragranceForm.vendor.startsWith('http') && fragranceForm.vendor.length > 50 && !fragranceForm.vendor.includes('tinyurl.com') && (
+                        {fragranceForm.vendor.startsWith('http') && fragranceForm.vendor.length > 50 && !fragranceForm.vendor.includes('is.gd') && (
                           <button
                             type="button"
                             onClick={async () => {
