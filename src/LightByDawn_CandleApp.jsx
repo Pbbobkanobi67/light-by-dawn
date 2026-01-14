@@ -361,7 +361,7 @@ export default function CandleBusinessApp() {
       try {
         setSyncStatus('syncing');
 
-        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes, savedChatsRes] = await Promise.all([
+        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes, savedChatsRes, settingsRes] = await Promise.all([
           supabase.from('materials').select('*'),
           supabase.from('fragrances').select('*'),
           supabase.from('recipes').select('*'),
@@ -369,6 +369,7 @@ export default function CandleBusinessApp() {
           supabase.from('batch_list').select('*'),
           supabase.from('saved_instructions').select('*'),
           supabase.from('saved_chats').select('*'),
+          supabase.from('settings').select('*').eq('id', 'app_settings').single(),
         ]);
 
         // Simple sync: Supabase is the source of truth
@@ -404,6 +405,12 @@ export default function CandleBusinessApp() {
         if (savedChatsRes.data !== null) {
           setSavedChats(toCamelCase(savedChatsRes.data));
           loadedCountsRef.current.savedChats = savedChatsRes.data.length;
+        }
+
+        // Load settings (API key)
+        if (settingsRes.data?.gemini_api_key) {
+          setGeminiApiKey(settingsRes.data.gemini_api_key);
+          localStorage.setItem('geminiApiKey', settingsRes.data.gemini_api_key);
         }
 
         console.log('Loaded from Supabase:', loadedCountsRef.current);
@@ -2226,11 +2233,18 @@ IMPORTANT:
     }
   };
 
-  // Save API key to localStorage
-  const saveApiKey = (key) => {
+  // Save API key to localStorage and Supabase
+  const saveApiKey = async (key) => {
     setGeminiApiKey(key);
     localStorage.setItem('geminiApiKey', key);
     setShowApiKeyInput(false);
+
+    // Sync to Supabase
+    try {
+      await supabase.from('settings').upsert([{ id: 'app_settings', gemini_api_key: key }], { onConflict: 'id' });
+    } catch (error) {
+      console.warn('Failed to sync API key to Supabase:', error);
+    }
   };
 
   // General AI Chat function (using Google Gemini)
