@@ -1422,32 +1422,47 @@ export default function CandleBusinessApp() {
 
     setUrlImportLoading(true);
     try {
-      // Fetch the URL content using a CORS proxy or direct fetch
-      let pageContent = '';
+      // Fetch the URL content using our serverless API (avoids CORS)
+      let cleanedContent = '';
+
+      // Try our own API endpoint first
       try {
-        // Try fetching directly (may work for some sites)
-        const response = await fetch(urlImportInput);
-        if (response.ok) {
-          pageContent = await response.text();
+        const apiResponse = await fetch(`/api/fetch-url?url=${encodeURIComponent(urlImportInput)}`);
+        if (apiResponse.ok) {
+          const data = await apiResponse.json();
+          cleanedContent = data.content || '';
         }
-      } catch (e) {
-        // If direct fetch fails, try CORS proxies
+      } catch (apiError) {
+        console.log('API fetch failed, trying proxies...');
+      }
+
+      // Fallback to CORS proxies if API fails
+      if (!cleanedContent) {
         const proxies = [
-          `https://corsproxy.io/?${encodeURIComponent(urlImportInput)}`,
-          `https://api.allorigins.win/get?url=${encodeURIComponent(urlImportInput)}`
+          `https://api.allorigins.win/get?url=${encodeURIComponent(urlImportInput)}`,
+          `https://corsproxy.io/?${encodeURIComponent(urlImportInput)}`
         ];
         for (const proxyUrl of proxies) {
           try {
             const proxyResponse = await fetch(proxyUrl);
             if (proxyResponse.ok) {
               const contentType = proxyResponse.headers.get('content-type') || '';
+              let pageContent = '';
               if (contentType.includes('json')) {
                 const proxyData = await proxyResponse.json();
                 pageContent = proxyData.contents || '';
               } else {
                 pageContent = await proxyResponse.text();
               }
-              if (pageContent) break;
+              if (pageContent) {
+                cleanedContent = pageContent
+                  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .substring(0, 15000);
+                break;
+              }
             }
           } catch (proxyError) {
             continue;
@@ -1455,17 +1470,9 @@ export default function CandleBusinessApp() {
         }
       }
 
-      if (!pageContent) {
-        throw new Error('Could not fetch the page content');
+      if (!cleanedContent) {
+        throw new Error('Could not fetch the page content. Please try again or enter details manually.');
       }
-
-      // Clean up HTML to reduce tokens
-      const cleanedContent = pageContent
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .substring(0, 15000); // Limit content to avoid token limits
 
       // Determine vendor from URL
       let vendor = 'Unknown';
