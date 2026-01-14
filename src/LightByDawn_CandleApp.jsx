@@ -220,6 +220,7 @@ export default function CandleBusinessApp() {
   const [showUrlImportModal, setShowUrlImportModal] = useState(false);
   const [urlImportInput, setUrlImportInput] = useState('');
   const [urlImportLoading, setUrlImportLoading] = useState(false);
+  const [urlImportType, setUrlImportType] = useState('material'); // 'material' or 'fragrance'
   const [showFragranceModal, setShowFragranceModal] = useState(false);
   const [showBatchInstructionsModal, setShowBatchInstructionsModal] = useState(false);
   const [batchInstructions, setBatchInstructions] = useState(null);
@@ -1600,6 +1601,174 @@ ${cleanedContent.substring(0, 12000)}`;
     setEditingFragrance(null);
     setFragranceForm({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
     setShowFragranceModal(true);
+  };
+
+  // Import fragrance from URL using AI
+  const importFragranceFromUrl = async () => {
+    if (!urlImportInput.trim()) {
+      alert('Please enter a product URL');
+      return;
+    }
+    if (!geminiApiKey) {
+      alert('Please set your Gemini API key first (click the chat bubble, then the key icon)');
+      return;
+    }
+
+    setUrlImportLoading(true);
+    try {
+      // Fetch the URL content using our serverless API
+      let cleanedContent = '';
+
+      try {
+        const apiResponse = await fetch(`/api/fetch-url?url=${encodeURIComponent(urlImportInput)}`);
+        if (apiResponse.ok) {
+          const data = await apiResponse.json();
+          cleanedContent = data.content || '';
+        }
+      } catch (apiError) {
+        console.log('API fetch failed, trying proxies...');
+      }
+
+      // Fallback to CORS proxies
+      if (!cleanedContent) {
+        const proxies = [
+          `https://api.allorigins.win/get?url=${encodeURIComponent(urlImportInput)}`,
+          `https://corsproxy.io/?${encodeURIComponent(urlImportInput)}`
+        ];
+        for (const proxyUrl of proxies) {
+          try {
+            const proxyResponse = await fetch(proxyUrl);
+            if (proxyResponse.ok) {
+              const contentType = proxyResponse.headers.get('content-type') || '';
+              let pageContent = '';
+              if (contentType.includes('json')) {
+                const proxyData = await proxyResponse.json();
+                pageContent = proxyData.contents || '';
+              } else {
+                pageContent = await proxyResponse.text();
+              }
+              if (pageContent) {
+                cleanedContent = pageContent
+                  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .substring(0, 15000);
+                break;
+              }
+            }
+          } catch (proxyError) {
+            continue;
+          }
+        }
+      }
+
+      if (!cleanedContent) {
+        throw new Error('Could not fetch the page content. Please try again or enter details manually.');
+      }
+
+      // Determine vendor from URL
+      let vendor = 'Unknown';
+      if (urlImportInput.includes('candlescience.com')) vendor = 'CandleScience';
+      else if (urlImportInput.includes('amazon.com')) vendor = 'Amazon';
+      else if (urlImportInput.includes('lonestarcandle')) vendor = 'Lone Star';
+
+      // Check for Amazon bot protection
+      if (vendor === 'Amazon' && (cleanedContent.includes('Continue shopping') || cleanedContent.length < 500)) {
+        throw new Error('Amazon blocks automated access. Please copy product details manually.');
+      }
+
+      // Use Gemini to extract fragrance info
+      const prompt = `You are extracting fragrance oil/essential oil product information from a candle-making supply website.
+
+IMPORTANT: Look for the MAIN FRAGRANCE PRODUCT on this page and extract its details.
+
+From this page content, find and return ONLY a JSON object (no markdown, no backticks, no explanation):
+
+{
+  "name": "the fragrance name (clean, without 'fragrance oil' suffix)",
+  "type": "FO" for fragrance oil or "EO" for essential oil,
+  "packageSize": the bottle size in oz (e.g., 16 for 16oz bottle),
+  "packageCost": the price as a number without $ sign,
+  "flashPoint": the flash point temperature in Fahrenheit (number, default 200 if not found),
+  "maxLoad": maximum fragrance load percentage (number, default 10 if not found)
+}
+
+RULES:
+- type is "FO" for fragrance oils, "EO" for essential oils
+- packageSize is usually in oz (1, 4, 8, 16 oz are common)
+- flashPoint is in Fahrenheit (look for "flash point" on the page)
+- maxLoad is the recommended max % (look for "max load" or "usage rate", default 10)
+- Find the actual price on the page (look for $ amounts)
+
+Page URL: ${urlImportInput}
+Vendor: ${vendor}
+
+PAGE CONTENT:
+${cleanedContent.substring(0, 12000)}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1 }
+        })
+      });
+
+      if (!response.ok) throw new Error('AI request failed');
+
+      const data = await response.json();
+      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Parse JSON from response
+      let jsonStr = aiText;
+      if (aiText.includes('```')) {
+        jsonStr = aiText.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      }
+
+      const productInfo = JSON.parse(jsonStr);
+
+      // Validate extracted data
+      if (!productInfo.name || productInfo.name.length < 2) {
+        throw new Error('Could not extract fragrance name. Please enter details manually.');
+      }
+
+      // Generate ID
+      const newId = `FO-${String(fragrances.length + 1).padStart(3, '0')}`;
+
+      // Pre-fill the fragrance form
+      const defaultPrices = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 };
+      const defaultQtys = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 };
+      const pkgSize = productInfo.packageSize || 16;
+
+      setFragranceForm({
+        id: newId,
+        name: productInfo.name || '',
+        type: productInfo.type === 'EO' ? 'EO' : 'FO',
+        vendor: vendor !== 'Unknown' ? vendor : urlImportInput,
+        packageSize: pkgSize,
+        packageCost: productInfo.packageCost || 0,
+        prices: { ...defaultPrices, [pkgSize]: productInfo.packageCost || 0 },
+        quantities: { ...defaultQtys },
+        flashPoint: productInfo.flashPoint || 200,
+        maxLoad: productInfo.maxLoad || 10,
+        qtyOnHand: 0,
+        reorderPoint: 0,
+        archived: false
+      });
+
+      setEditingFragrance(null);
+      setShowUrlImportModal(false);
+      setShowFragranceModal(true);
+      setUrlImportInput('');
+
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import: ' + error.message + '\n\nTry copying the product details manually.');
+    } finally {
+      setUrlImportLoading(false);
+    }
   };
 
   const openEditFragrance = (frag) => {
@@ -4426,7 +4595,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => setShowUrlImportModal(true)} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: '6px' }}><ExternalLink size={16} /> Import URL</button>
+                  <button onClick={() => { setUrlImportType('material'); setShowUrlImportModal(true); }} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: '6px' }}><ExternalLink size={16} /> Import URL</button>
                   <button onClick={openAddMaterial} style={btnPrimary}><Plus size={18} /> Add Material</button>
                 </div>
               </div>
@@ -4655,6 +4824,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     ))}
                   </div>
                   <button onClick={() => setShowArchivedFragrances(!showArchivedFragrances)} style={{ padding: '8px 16px', background: showArchivedFragrances ? 'rgba(162,155,254,0.3)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: showArchivedFragrances ? '#a29bfe' : 'rgba(252,228,214,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Archive size={16} /> {showArchivedFragrances ? 'Hide Archived' : 'Show Archived'}</button>
+                  <button onClick={() => { setUrlImportType('fragrance'); setShowUrlImportModal(true); }} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: '6px' }}><ExternalLink size={16} /> Import URL</button>
                   <button onClick={openAddFragrance} style={btnPrimary}><Plus size={18} /> Add Fragrance</button>
                 </div>
               </div>
@@ -6079,23 +6249,23 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '20px', padding: '32px', width: '500px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Import from URL</h2>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Import {urlImportType === 'fragrance' ? 'Fragrance' : 'Material'} from URL</h2>
               <button onClick={() => { setShowUrlImportModal(false); setUrlImportInput(''); }} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.6)', cursor: 'pointer' }}><X size={24} /></button>
             </div>
             <p style={{ color: 'rgba(252,228,214,0.7)', fontSize: '14px', marginBottom: '16px' }}>
-              Paste a product URL from CandleScience or Amazon. AI will extract the product details automatically.
+              Paste a {urlImportType === 'fragrance' ? 'fragrance oil' : 'product'} URL from CandleScience. AI will extract the details automatically.
             </p>
             <input
               type="text"
               value={urlImportInput}
               onChange={(e) => setUrlImportInput(e.target.value)}
-              placeholder="https://www.candlescience.com/wax/..."
+              placeholder={urlImportType === 'fragrance' ? 'https://www.candlescience.com/fragrance/...' : 'https://www.candlescience.com/wax/...'}
               style={{ width: '100%', padding: '14px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '10px', color: '#fce4d6', fontSize: '14px', marginBottom: '20px' }}
-              onKeyDown={(e) => e.key === 'Enter' && !urlImportLoading && importMaterialFromUrl()}
+              onKeyDown={(e) => e.key === 'Enter' && !urlImportLoading && (urlImportType === 'fragrance' ? importFragranceFromUrl() : importMaterialFromUrl())}
             />
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowUrlImportModal(false); setUrlImportInput(''); }} style={{ padding: '12px 24px', background: 'rgba(255,159,107,0.1)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
-              <button onClick={importMaterialFromUrl} disabled={urlImportLoading} style={{ padding: '12px 24px', background: urlImportLoading ? 'rgba(255,159,107,0.3)' : 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', border: 'none', borderRadius: '10px', color: urlImportLoading ? 'rgba(252,228,214,0.5)' : '#1a0a1e', cursor: urlImportLoading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={urlImportType === 'fragrance' ? importFragranceFromUrl : importMaterialFromUrl} disabled={urlImportLoading} style={{ padding: '12px 24px', background: urlImportLoading ? 'rgba(255,159,107,0.3)' : 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', border: 'none', borderRadius: '10px', color: urlImportLoading ? 'rgba(252,228,214,0.5)' : '#1a0a1e', cursor: urlImportLoading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {urlImportLoading ? (
                   <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Importing...</>
                 ) : (

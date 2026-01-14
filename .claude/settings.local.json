@@ -23,7 +23,8 @@
       "Bash(vercel --prod)",
       "Bash(ping:*)",
       "Bash(nslookup:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:www.candlescience.com)"
     ],
     "deny": [],
     "ask": []
