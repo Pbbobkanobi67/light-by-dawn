@@ -1733,25 +1733,30 @@ ${cleanedContent.substring(0, 12000)}`;
       // Use Gemini to extract fragrance info
       const prompt = `You are extracting fragrance oil/essential oil product information from a candle-making supply website.
 
-IMPORTANT: Look for the MAIN FRAGRANCE PRODUCT on this page and extract its details.
+IMPORTANT: Look for the MAIN FRAGRANCE PRODUCT on this page and extract ALL available sizes and prices.
 
 From this page content, find and return ONLY a JSON object (no markdown, no backticks, no explanation):
 
 {
   "name": "the fragrance name (clean, without 'fragrance oil' suffix)",
   "type": "FO" for fragrance oil or "EO" for essential oil,
-  "packageSize": the bottle size in oz (e.g., 16 for 16oz bottle),
-  "packageCost": the price as a number without $ sign,
+  "prices": {
+    "1": price for 1oz size or 0 if not available,
+    "4": price for 4oz size or 0 if not available,
+    "8": price for 8oz size or 0 if not available,
+    "16": price for 16oz size or 0 if not available
+  },
   "flashPoint": the flash point temperature in Fahrenheit (number, default 200 if not found),
   "maxLoad": maximum fragrance load percentage (number, default 10 if not found)
 }
 
 RULES:
 - type is "FO" for fragrance oils, "EO" for essential oils
-- packageSize is usually in oz (1, 4, 8, 16 oz are common)
+- IMPORTANT: Extract ALL size/price options available on the page (look for 1oz, 4oz, 8oz, 16oz prices)
+- Common sizes are 1, 4, 8, 16 oz - find each price if listed
 - flashPoint is in Fahrenheit (look for "flash point" on the page)
 - maxLoad is the recommended max % (look for "max load" or "usage rate", default 10)
-- Find the actual price on the page (look for $ amounts)
+- Prices should be numbers without $ sign
 
 Page URL: ${urlImportInput}
 Vendor: ${vendor}
@@ -1789,10 +1794,23 @@ ${cleanedContent.substring(0, 12000)}`;
       // Generate ID
       const newId = `FO-${String(fragrances.length + 1).padStart(3, '0')}`;
 
-      // Pre-fill the fragrance form
+      // Pre-fill the fragrance form with extracted prices
       const defaultPrices = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 };
       const defaultQtys = { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 };
-      const pkgSize = productInfo.packageSize || 16;
+
+      // Merge extracted prices with defaults
+      const extractedPrices = productInfo.prices || {};
+      const prices = {
+        0.5: extractedPrices['0.5'] || 0,
+        1: extractedPrices['1'] || 0,
+        4: extractedPrices['4'] || 0,
+        8: extractedPrices['8'] || 0,
+        16: extractedPrices['16'] || 0
+      };
+
+      // Find the largest size with a price for packageSize
+      const pkgSize = [16, 8, 4, 1, 0.5].find(s => prices[s] > 0) || 16;
+      const pkgCost = prices[pkgSize] || 0;
 
       setFragranceForm({
         id: newId,
@@ -1800,8 +1818,8 @@ ${cleanedContent.substring(0, 12000)}`;
         type: productInfo.type === 'EO' ? 'EO' : 'FO',
         vendor: vendor !== 'Unknown' ? vendor : urlImportInput,
         packageSize: pkgSize,
-        packageCost: productInfo.packageCost || 0,
-        prices: { ...defaultPrices, [pkgSize]: productInfo.packageCost || 0 },
+        packageCost: pkgCost,
+        prices: prices,
         quantities: { ...defaultQtys },
         flashPoint: productInfo.flashPoint || 200,
         maxLoad: productInfo.maxLoad || 10,
