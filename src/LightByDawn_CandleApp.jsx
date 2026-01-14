@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move, Store, RefreshCw } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -73,11 +73,16 @@ const navItems = [
   { id: 'pricing', label: 'Pricing', icon: DollarSign },
   { id: 'shopping', label: 'Shopping List', icon: ShoppingCart },
   { id: 'history', label: 'Batch History', icon: History },
+  { id: 'sales', label: 'Sales', icon: Store },
   { id: 'admin', label: 'Admin', icon: Settings },
 ];
 
 const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 const formatPercent = (num) => `${(num * 100).toFixed(1)}%`;
+
+// Unit conversion helpers for oz to ml/grams
+const ozToMl = (oz) => (oz * 29.5735).toFixed(1);
+const ozToGrams = (oz) => (oz * 28.3495).toFixed(1);
 
 const categoryColors = {
   Wax: { bg: 'rgba(254,202,87,0.2)', text: '#feca57' },
@@ -212,6 +217,9 @@ export default function CandleBusinessApp() {
   const [isResizingModal, setIsResizingModal] = useState(false);
   const [modalDragOffset, setModalDragOffset] = useState({ x: 0, y: 0 });
   const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [showUrlImportModal, setShowUrlImportModal] = useState(false);
+  const [urlImportInput, setUrlImportInput] = useState('');
+  const [urlImportLoading, setUrlImportLoading] = useState(false);
   const [showFragranceModal, setShowFragranceModal] = useState(false);
   const [showBatchInstructionsModal, setShowBatchInstructionsModal] = useState(false);
   const [batchInstructions, setBatchInstructions] = useState(null);
@@ -244,6 +252,18 @@ export default function CandleBusinessApp() {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Mobile AI chat state
+  const [mobileAiChatOpen, setMobileAiChatOpen] = useState(false);
+  const [mobileAiChatPos, setMobileAiChatPos] = useState({ x: 20, y: 100 });
+  const [isMobileAiDragging, setIsMobileAiDragging] = useState(false);
+  const mobileAiDragOffset = React.useRef({ x: 0, y: 0 });
+
+  // Mobile FAB position state (draggable button)
+  const [mobileAiFabPos, setMobileAiFabPos] = useState({ x: null, y: null }); // null = use default position
+  const [isFabDragging, setIsFabDragging] = useState(false);
+  const fabDragOffset = React.useRef({ x: 0, y: 0 });
+  const fabDragMoved = React.useRef(false);
 
   const [fragranceSort, setFragranceSort] = useState('name'); // 'name', 'type', 'vendor', 'cost', 'stock'
   const [recipeSort, setRecipeSort] = useState('name'); // 'name', 'size', 'profit', 'canMake', 'components'
@@ -280,6 +300,8 @@ export default function CandleBusinessApp() {
   const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0, savedChats: 0 });
   const syncEnabledRef = React.useRef(false);
 
+  
+
   // Load data from Supabase on mount
   useEffect(() => {
     const loadFromSupabase = async () => {
@@ -296,33 +318,37 @@ export default function CandleBusinessApp() {
           supabase.from('saved_chats').select('*'),
         ]);
 
-        // If we have data in Supabase, use it; otherwise keep localStorage/defaults
-        // CRITICAL: Track loaded counts to prevent accidental data wipes during hot reload
-        if (materialsRes.data?.length > 0) {
-          setMaterials(toCamelCase(materialsRes.data));
-          loadedCountsRef.current.materials = materialsRes.data.length;
+        // Simple sync: Supabase is the source of truth
+        const loadData = (supabaseData, localKey, setter, countKey) => {
+          const supabaseCamel = toCamelCase(supabaseData || []);
+          setter(supabaseCamel);
+          loadedCountsRef.current[countKey] = supabaseCamel.length;
+          console.log(`${localKey}: ${supabaseCamel.length} from Supabase`);
+        };
+
+        // Load core tables with smart sync
+        if (materialsRes.data !== null) {
+          loadData(materialsRes.data, 'materials', setMaterials, 'materials');
         }
-        if (fragrancesRes.data?.length > 0) {
-          setFragrances(toCamelCase(fragrancesRes.data));
-          loadedCountsRef.current.fragrances = fragrancesRes.data.length;
+        if (fragrancesRes.data !== null) {
+          loadData(fragrancesRes.data, 'fragrances', setFragrances, 'fragrances');
         }
-        if (recipesRes.data?.length > 0) {
-          setRecipes(toCamelCase(recipesRes.data));
-          loadedCountsRef.current.recipes = recipesRes.data.length;
+        if (recipesRes.data !== null) {
+          loadData(recipesRes.data, 'recipes', setRecipes, 'recipes');
         }
-        if (batchHistoryRes.data?.length > 0) {
+        if (batchHistoryRes.data !== null) {
           setBatchHistory(toCamelCase(batchHistoryRes.data));
           loadedCountsRef.current.batchHistory = batchHistoryRes.data.length;
         }
-        if (batchListRes.data?.length > 0) {
+        if (batchListRes.data !== null) {
           setBatchList(toCamelCase(batchListRes.data));
           loadedCountsRef.current.batchList = batchListRes.data.length;
         }
-        if (savedInstructionsRes.data?.length > 0) {
+        if (savedInstructionsRes.data !== null) {
           setSavedInstructions(toCamelCase(savedInstructionsRes.data));
           loadedCountsRef.current.savedInstructions = savedInstructionsRes.data.length;
         }
-        if (savedChatsRes.data?.length > 0) {
+        if (savedChatsRes.data !== null) {
           setSavedChats(toCamelCase(savedChatsRes.data));
           loadedCountsRef.current.savedChats = savedChatsRes.data.length;
         }
@@ -344,16 +370,56 @@ export default function CandleBusinessApp() {
   // Data syncs to Supabase on save and loads fresh on page refresh
   // For now, refresh the page to see changes from other devices
 
-  // Save to Supabase helper
-  const syncToSupabase = useCallback(async (table, data) => {
+  // Sync to Supabase - UPSERT only for core tables (no auto-delete to prevent cross-device conflicts)
+  const syncToSupabase = useCallback(async (table, data, upsertOnly = false) => {
     try {
-      // Delete all existing rows and insert new ones (simple sync strategy)
-      await supabase.from(table).delete().neq('id', '');
-      if (data.length > 0) {
-        await supabase.from(table).insert(toSnakeCase(data));
+      const snakeData = toSnakeCase(data);
+
+      if (upsertOnly) {
+        // UPSERT ONLY: Add new items, update existing - NO deletions
+        // Deletions must be explicit via deleteFromSupabase()
+        if (data.length > 0) {
+          const { error } = await supabase.from(table).upsert(snakeData, { onConflict: 'id' });
+          if (error) {
+            console.error(`Supabase upsert error for ${table}:`, error.message);
+          } else {
+            console.log(`Synced ${data.length} items to ${table} (upsert)`);
+          }
+        }
+      } else {
+        // DELETE+INSERT for non-core data - simple replacement
+        const { error: delError } = await supabase.from(table).delete().neq('id', '');
+        if (delError) {
+          console.error(`Supabase delete error for ${table}:`, delError.message);
+          return;
+        }
+        if (data.length > 0) {
+          const { error } = await supabase.from(table).insert(snakeData);
+          if (error) {
+            console.error(`Supabase insert error for ${table}:`, error.message);
+          } else {
+            console.log(`Synced ${data.length} items to ${table} (replace)`);
+          }
+        } else {
+          console.log(`Cleared ${table} (0 items)`);
+        }
       }
     } catch (error) {
       console.warn(`Failed to sync ${table} to Supabase:`, error);
+    }
+  }, []);
+
+  // Explicit delete from Supabase - call this when user deletes an item
+  const deleteFromSupabase = useCallback(async (table, id) => {
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) {
+        console.error(`Failed to delete ${id} from ${table}:`, error.message);
+      } else {
+        console.log(`Deleted ${id} from ${table}`);
+      }
+    } catch (error) {
+      console.warn(`Failed to delete from ${table}:`, error);
     }
   }, []);
 
@@ -366,30 +432,28 @@ export default function CandleBusinessApp() {
       const timer = setTimeout(() => {
         syncEnabledRef.current = true;
         console.log('Supabase sync enabled');
-      }, 2000); // 2 second delay for safety
+      }, 500); // 500ms delay for safety
       return () => clearTimeout(timer);
     }
-  }, [dataLoaded]);
+  }, [dataLoaded, materials, fragrances, recipes, syncToSupabase]);
 
   // Safe sync function - protects against accidental data wipes
   const safeSyncToSupabase = useCallback(async (table, data, loadedKey) => {
     if (!syncEnabledRef.current) return;
 
-    // CRITICAL: Never sync empty core data (materials, fragrances, recipes)
+    // Core tables use UPSERT only (no auto-delete to prevent cross-device conflicts)
     const coreDataTables = ['materials', 'fragrances', 'recipes'];
-    if (coreDataTables.includes(table) && data.length === 0) {
+    const isCoreTable = coreDataTables.includes(table);
+
+    // CRITICAL: Never sync empty core data - prevents accidental wipes
+    if (isCoreTable && data.length === 0) {
       console.warn(`BLOCKED: Cannot sync empty ${table} - this would wipe core data!`);
       return;
     }
 
-    // For other tables, check against loaded count
-    const loadedCount = loadedCountsRef.current[loadedKey] || 0;
-    if (data.length < loadedCount && loadedCount > 0) {
-      console.warn(`BLOCKED: Attempted to sync ${data.length} items to ${table} but loaded ${loadedCount}. This would wipe data!`);
-      return;
-    }
-
-    await syncToSupabase(table, data);
+    // Core tables: upsert only (add/update, deletions are explicit)
+    // Non-core tables: delete+insert (simple replacement)
+    await syncToSupabase(table, data, isCoreTable);
   }, [syncToSupabase]);
 
   // Persist data to localStorage and Supabase (with safety checks)
@@ -462,6 +526,45 @@ export default function CandleBusinessApp() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportText, setExportText] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Shopify integration state
+  const [shopifyOrders, setShopifyOrders] = useState([]);
+  const [shopifyProducts, setShopifyProducts] = useState([]);
+  const [shopifyLoading, setShopifyLoading] = useState(false);
+  const [shopifyError, setShopifyError] = useState(null);
+  const [shopifyLastSync, setShopifyLastSync] = useState(null);
+
+  // Fetch Shopify data
+  const fetchShopifyData = useCallback(async () => {
+    setShopifyLoading(true);
+    setShopifyError(null);
+    try {
+      // Fetch orders from last 90 days
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const [ordersRes, productsRes] = await Promise.all([
+        fetch(`/api/shopify?endpoint=orders&status=any&created_at_min=${ninetyDaysAgo.toISOString()}&limit=50`),
+        fetch(`/api/shopify?endpoint=products&limit=50`)
+      ]);
+
+      if (!ordersRes.ok || !productsRes.ok) {
+        throw new Error('Failed to fetch from Shopify');
+      }
+
+      const ordersData = await ordersRes.json();
+      const productsData = await productsRes.json();
+
+      setShopifyOrders(ordersData.orders || []);
+      setShopifyProducts(productsData.products || []);
+      setShopifyLastSync(new Date().toISOString());
+    } catch (err) {
+      console.error('Shopify fetch error:', err);
+      setShopifyError(err.message);
+    } finally {
+      setShopifyLoading(false);
+    }
+  }, []);
 
   // Quick adjust inventory
   const adjustInventory = (materialId, amount) => {
@@ -873,7 +976,8 @@ export default function CandleBusinessApp() {
   // What can I make - calculate for all recipes (using 9oz as default size)
   const whatCanIMake = useMemo(() => {
     const defaultSize = 9;
-    return recipes.map(recipe => {
+    const activeRecipes = recipes.filter(r => !r.archived);
+    return activeRecipes.map(recipe => {
       const check12 = canMakeRecipe(recipe, 12, defaultSize);
       const check24 = canMakeRecipe(recipe, 24, defaultSize);
       const check6 = canMakeRecipe(recipe, 6, defaultSize);
@@ -1238,6 +1342,8 @@ export default function CandleBusinessApp() {
     let filtered = materialFilter === 'All' ? [...materials] : materials.filter(m => m.category === materialFilter);
     
     switch (materialSort) {
+      case 'id':
+        return filtered.sort((a, b) => a.id.localeCompare(b.id));
       case 'name':
         return filtered.sort((a, b) => a.name.localeCompare(b.name));
       case 'category':
@@ -1280,7 +1386,7 @@ export default function CandleBusinessApp() {
     }
   };
 
-  const saveMaterial = () => {
+  const saveMaterial = async () => {
     if (!materialForm.name) { alert('Name is required'); return; }
     if (!materialForm.id) { alert('ID is required'); return; }
     
@@ -1288,6 +1394,13 @@ export default function CandleBusinessApp() {
     const duplicateId = materials.find(m => m.id === materialForm.id && m.id !== editingMaterial);
     if (duplicateId) { alert('This ID already exists. Please use a unique ID.'); return; }
     
+    // Save to Supabase FIRST
+    const { error } = await supabase.from('materials').upsert([toSnakeCase({ ...materialForm })], { onConflict: 'id' });
+    if (error) {
+      alert('Failed to save: ' + error.message);
+      return;
+    }
+
     if (editingMaterial) {
       setMaterials(materials.map(m => m.id === editingMaterial ? { ...materialForm } : m));
     } else {
@@ -1296,8 +1409,155 @@ export default function CandleBusinessApp() {
     setShowMaterialModal(false);
   };
 
-  const deleteMaterial = (id, e) => {
+  // Import material from URL using AI
+  const importMaterialFromUrl = async () => {
+    if (!urlImportInput.trim()) {
+      alert('Please enter a product URL');
+      return;
+    }
+    if (!geminiApiKey) {
+      alert('Please set your Gemini API key first (click the chat bubble, then the key icon)');
+      return;
+    }
+
+    setUrlImportLoading(true);
+    try {
+      // Fetch the URL content using a CORS proxy or direct fetch
+      let pageContent = '';
+      try {
+        // Try fetching directly (may work for some sites)
+        const response = await fetch(urlImportInput);
+        if (response.ok) {
+          pageContent = await response.text();
+        }
+      } catch (e) {
+        // If direct fetch fails, try CORS proxies
+        const proxies = [
+          `https://corsproxy.io/?${encodeURIComponent(urlImportInput)}`,
+          `https://api.allorigins.win/get?url=${encodeURIComponent(urlImportInput)}`
+        ];
+        for (const proxyUrl of proxies) {
+          try {
+            const proxyResponse = await fetch(proxyUrl);
+            if (proxyResponse.ok) {
+              const contentType = proxyResponse.headers.get('content-type') || '';
+              if (contentType.includes('json')) {
+                const proxyData = await proxyResponse.json();
+                pageContent = proxyData.contents || '';
+              } else {
+                pageContent = await proxyResponse.text();
+              }
+              if (pageContent) break;
+            }
+          } catch (proxyError) {
+            continue;
+          }
+        }
+      }
+
+      if (!pageContent) {
+        throw new Error('Could not fetch the page content');
+      }
+
+      // Clean up HTML to reduce tokens
+      const cleanedContent = pageContent
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .substring(0, 15000); // Limit content to avoid token limits
+
+      // Determine vendor from URL
+      let vendor = 'Unknown';
+      if (urlImportInput.includes('candlescience.com')) vendor = 'CandleScience';
+      else if (urlImportInput.includes('amazon.com')) vendor = 'Amazon';
+      else if (urlImportInput.includes('lonestarcandle')) vendor = 'Lone Star';
+
+      // Use Gemini to extract product info
+      const prompt = `Extract candle-making material information from this product page content. Return ONLY valid JSON with these exact fields (no markdown, no explanation):
+{
+  "name": "product name (clean, without brand prefix)",
+  "category": "one of: Wax, Container, Wick, Label, Packaging, Unit",
+  "packageSize": number (quantity per package, e.g., 10 for 10lb, 12 for case of 12),
+  "unit": "lb, oz, unit, case, pack, or roll",
+  "packageCost": number (price in dollars),
+  "fillCapacity": number or null (only for containers - the oz capacity, e.g., 8 for 8oz jar)
+}
+
+Product URL: ${urlImportInput}
+Vendor: ${vendor}
+
+Page content:
+${cleanedContent}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1 }
+        })
+      });
+
+      if (!response.ok) throw new Error('AI request failed');
+
+      const data = await response.json();
+      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Parse JSON from response (handle markdown code blocks)
+      let jsonStr = aiText;
+      if (aiText.includes('```')) {
+        jsonStr = aiText.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      }
+
+      const productInfo = JSON.parse(jsonStr);
+
+      // Generate ID based on category
+      const prefixes = { Wax: 'W', Container: 'C', Wick: 'K', Label: 'L', Packaging: 'P', Unit: 'U' };
+      const prefix = prefixes[productInfo.category] || 'M';
+      const existingInCategory = materials.filter(m => m.id.startsWith(prefix + '-')).length;
+      const newId = `${prefix}-${String(existingInCategory + 1).padStart(3, '0')}`;
+
+      // Pre-fill the material form
+      setMaterialForm({
+        id: newId,
+        category: productInfo.category || 'Unit',
+        name: productInfo.name || '',
+        vendor: vendor !== 'Unknown' ? vendor : urlImportInput,
+        unit: productInfo.unit || 'unit',
+        packageSize: productInfo.packageSize || 1,
+        packageCost: productInfo.packageCost || 0,
+        qtyOnHand: 0,
+        reorderPoint: 0,
+        fillCapacity: productInfo.fillCapacity || null
+      });
+
+      setEditingMaterial(null);
+      setShowUrlImportModal(false);
+      setShowMaterialModal(true);
+      setUrlImportInput('');
+
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import: ' + error.message + '\n\nTry copying the product details manually.');
+    } finally {
+      setUrlImportLoading(false);
+    }
+  };
+
+  const deleteMaterial = async (id, e) => {
     if (e) e.stopPropagation();
+    const item = materials.find(m => m.id === id);
+    if (!confirm(`Delete "${item?.name || id}"? This cannot be undone.`)) return;
+
+    // Delete from Supabase FIRST
+    const { error } = await supabase.from('materials').delete().eq('id', id);
+    if (error) {
+      alert('Failed to delete: ' + error.message);
+      return;
+    }
+
+    // Then update local state
     setMaterials(materials.filter(m => m.id !== id));
     setSelectedMaterials(selectedMaterials.filter(sid => sid !== id));
   };
@@ -1315,8 +1575,15 @@ export default function CandleBusinessApp() {
     setShowFragranceModal(true);
   };
 
-  const saveFragrance = () => {
+  const saveFragrance = async () => {
     if (!fragranceForm.name) return;
+    // Save to Supabase FIRST
+    const { error } = await supabase.from('fragrances').upsert([toSnakeCase({ ...fragranceForm })], { onConflict: 'id' });
+    if (error) {
+      alert('Failed to save: ' + error.message);
+      return;
+    }
+
     if (editingFragrance) {
       setFragrances(fragrances.map(f => f.id === editingFragrance ? { ...fragranceForm, id: editingFragrance } : f));
     } else {
@@ -1326,8 +1593,17 @@ export default function CandleBusinessApp() {
     setShowFragranceModal(false);
   };
 
-  const deleteFragrance = (id, e) => {
+  const deleteFragrance = async (id, e) => {
     if (e) e.stopPropagation();
+    const item = fragrances.find(f => f.id === id);
+    if (!confirm(`Delete "${item?.name || id}"? This cannot be undone.`)) return;
+
+    const { error } = await supabase.from('fragrances').delete().eq('id', id);
+    if (error) {
+      alert('Failed to delete: ' + error.message);
+      return;
+    }
+
     setFragrances(fragrances.filter(f => f.id !== id));
     setSelectedFragrances(selectedFragrances.filter(sid => sid !== id));
   };
@@ -1421,11 +1697,18 @@ export default function CandleBusinessApp() {
     }
   }, [isResizingModal, handleModalResize, handleModalResizeEnd]);
 
-  const saveRecipe = () => {
+  const saveRecipe = async () => {
     const totalPercent = recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0);
     if (totalPercent !== 100) return;
     if (!recipeForm.name) return;
     
+    // Save to Supabase FIRST
+    const { error } = await supabase.from('recipes').upsert([toSnakeCase(newRecipe)], { onConflict: 'id' });
+    if (error) {
+      alert('Failed to save: ' + error.message);
+      return;
+    }
+
     if (editingRecipe) {
       setRecipes(recipes.map(r => r.id === editingRecipe ? { ...recipeForm, id: editingRecipe } : r));
     } else {
@@ -1443,8 +1726,17 @@ export default function CandleBusinessApp() {
     }
   };
 
-  const deleteRecipe = (id, e) => {
+  const deleteRecipe = async (id, e) => {
     if (e) e.stopPropagation();
+    const item = recipes.find(r => r.id === id);
+    if (!confirm(`Delete recipe "${item?.name || id}"? This cannot be undone.`)) return;
+
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    if (error) {
+      alert('Failed to delete: ' + error.message);
+      return;
+    }
+
     setRecipes(recipes.filter(r => r.id !== id));
   };
 
@@ -1962,6 +2254,8 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
 
   // Delete a saved chat
   const deleteChat = (id) => {
+    const item = savedChats.find(c => c.id === id);
+    if (!confirm(`Delete chat "${item?.title || 'Untitled'}"? This cannot be undone.`)) return;
     setSavedChats(prev => prev.filter(c => c.id !== id));
     if (currentChatId === id) {
       setCurrentChatId(null);
@@ -1985,6 +2279,8 @@ Calculate all amounts precisely based on batch size. Provide measurements in oz,
 
   // Delete saved instructions
   const deleteInstruction = (id) => {
+    const item = savedInstructions.find(i => i.id === id);
+    if (!confirm(`Delete instruction "${item?.title || 'Untitled'}"? This cannot be undone.`)) return;
     setSavedInstructions(prev => prev.filter(i => i.id !== id));
     if (viewingInstruction?.id === id) {
       setViewingInstruction(null);
@@ -2603,6 +2899,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             order: 2 !important;
           }
           .instructions-main { order: 1 !important; }
+          .ai-chat-container { display: none !important; }
           .chat-input-row { flex-direction: column !important; gap: 8px !important; }
           .chat-input { font-size: 14px !important; }
           .chat-message { padding: 12px !important; font-size: 13px !important; }
@@ -2626,6 +2923,15 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           /* Pricing page responsive */
           .pricing-grid { grid-template-columns: 1fr !important; }
           .pricing-card { padding: 16px !important; }
+
+          /* Inventory page responsive */
+          .inventory-recipe-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .inventory-recipe-grid > div {
+            padding: 16px !important;
+          }
 
           /* AI chat panel responsive */
           .ai-chat-panel {
@@ -2742,7 +3048,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   { label: 'Materials Value', value: formatCurrency(materials.reduce((sum, m) => sum + (m.packageCost / m.packageSize * m.qtyOnHand), 0)), icon: Package, color: '#feca57' },
                   { label: 'Fragrance Value', value: formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0)), icon: Droplets, color: '#74b9ff' },
                   { label: 'Low Stock', value: lowStockItems.length, icon: AlertTriangle, color: lowStockItems.length > 0 ? '#ff6b6b' : '#55efc4' },
-                  { label: 'Recipes Ready', value: `${whatCanIMake.filter(w => w.maxQty >= 12).length} / ${recipes.length}`, icon: CheckCircle, color: '#55efc4' },
+                  { label: 'Recipes Ready', value: `${whatCanIMake.filter(w => w.maxQty >= 12).length} / ${whatCanIMake.length}`, icon: CheckCircle, color: '#55efc4' },
                   { label: 'Pending', value: `${stats.pendingBatches} batches`, icon: ShoppingCart, color: '#a29bfe' },
                 ].map((stat, i) => (
                   <div className="stat-card" key={i} style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
@@ -3540,12 +3846,18 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                   {/* Ingredients */}
                                   {msg.data.ingredients && (
                                     <div style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
-                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: '#feca57', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#feca57', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <Package size={16} /> Ingredients
                                       </div>
                                       {msg.data.ingredients.map((ing, j) => (
-                                        <div key={j} style={{ fontSize: '14px', color: 'rgba(252,228,214,0.9)', marginBottom: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(254,202,87,0.3)' }}>
-                                          <strong>{ing.item}</strong>: {ing.amount} <span style={{ color: 'rgba(252,228,214,0.5)' }}>({ing.amountMl}ml / {ing.amountGrams}g)</span>
+                                        <div key={j} style={{ marginBottom: '10px', paddingLeft: '12px', borderLeft: '3px solid rgba(254,202,87,0.4)', background: 'rgba(254,202,87,0.05)', borderRadius: '0 8px 8px 0', padding: '10px 12px' }}>
+                                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#fce4d6', marginBottom: '6px' }}>{ing.item}</div>
+                                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '13px', background: 'rgba(254,202,87,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#feca57', fontWeight: 600 }}>{ing.amountOz || ing.amount} oz</span>
+                                            <span style={{ fontSize: '13px', background: 'rgba(116,185,255,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#74b9ff', fontWeight: 600 }}>{ing.amountMl} ml</span>
+                                            <span style={{ fontSize: '13px', background: 'rgba(85,239,196,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#55efc4', fontWeight: 600 }}>{ing.amountGrams} g</span>
+                                          </div>
+                                          {ing.notes && <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginTop: '6px' }}>{ing.notes}</div>}
                                         </div>
                                       ))}
                                     </div>
@@ -3554,12 +3866,20 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                   {/* Fragrance breakdown */}
                                   {msg.data.fragranceBreakdown && msg.data.fragranceBreakdown.length > 0 && (
                                     <div style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '16px' }}>
-                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: '#ff9ff3', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#ff9ff3', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <Droplets size={16} /> Fragrance Blend
                                       </div>
                                       {msg.data.fragranceBreakdown.map((f, j) => (
-                                        <div key={j} style={{ fontSize: '14px', color: 'rgba(252,228,214,0.9)', marginBottom: '6px', paddingLeft: '8px', borderLeft: '2px solid rgba(255,159,243,0.3)' }}>
-                                          <strong>{f.name}</strong>: {f.percent}% = {f.amountOz}oz <span style={{ color: 'rgba(252,228,214,0.5)' }}>({f.amountMl}ml / {f.amountGrams}g)</span>
+                                        <div key={j} style={{ marginBottom: '10px', paddingLeft: '12px', borderLeft: '3px solid rgba(255,159,243,0.4)', background: 'rgba(255,159,243,0.05)', borderRadius: '0 8px 8px 0', padding: '10px 12px' }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#fce4d6' }}>{f.name}</span>
+                                            <span style={{ fontSize: '12px', background: 'rgba(255,159,243,0.2)', padding: '2px 8px', borderRadius: '10px', color: '#ff9ff3' }}>{f.percent}%</span>
+                                          </div>
+                                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '13px', background: 'rgba(254,202,87,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#feca57', fontWeight: 600 }}>{f.amountOz} oz</span>
+                                            <span style={{ fontSize: '13px', background: 'rgba(116,185,255,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#74b9ff', fontWeight: 600 }}>{f.amountMl} ml</span>
+                                            <span style={{ fontSize: '13px', background: 'rgba(85,239,196,0.15)', padding: '4px 10px', borderRadius: '6px', color: '#55efc4', fontWeight: 600 }}>{f.amountGrams} g</span>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -3921,6 +4241,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
                 </div>
               </div>
+
             </div>
           )}
 
@@ -3950,7 +4271,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Recipes Ready</div>
-                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#55efc4' }}>{whatCanIMake.filter(w => w.maxQty >= 12).length} / {recipes.length}</div>
+                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#55efc4' }}>{whatCanIMake.filter(w => w.maxQty >= 12).length} / {whatCanIMake.length}</div>
                 </div>
               </div>
 
@@ -3982,7 +4303,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <Zap size={24} color="#55efc4" /> What Can I Make?
               </h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '16px' }}>
+              <div className="inventory-recipe-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '16px' }}>
                 {whatCanIMake.map((item, i) => {
                   const statusColor = item.maxQty >= 24 ? '#55efc4' : item.maxQty >= 12 ? '#feca57' : item.maxQty > 0 ? '#ff9f6b' : '#ff6b6b';
                   const statusBg = item.maxQty >= 24 ? 'rgba(85,239,196,0.1)' : item.maxQty >= 12 ? 'rgba(254,202,87,0.1)' : item.maxQty > 0 ? 'rgba(255,159,107,0.1)' : 'rgba(255,107,107,0.1)';
@@ -4055,6 +4376,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </select>
                   {/* Sort Dropdown */}
                   <select value={materialSort} onChange={e => setMaterialSort(e.target.value)} style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.2)', borderRadius: '8px', color: '#fce4d6', fontSize: '13px' }}>
+                    <option value="id">Sort: ID</option>
                     <option value="name">Sort: Name A-Z</option>
                     <option value="category">Sort: Category</option>
                     <option value="vendor">Sort: Vendor</option>
@@ -4071,6 +4393,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       </button>
                     ))}
                   </div>
+                  <button onClick={() => setShowUrlImportModal(true)} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: '6px' }}><ExternalLink size={16} /> Import URL</button>
                   <button onClick={openAddMaterial} style={btnPrimary}><Plus size={18} /> Add Material</button>
                 </div>
               </div>
@@ -5301,11 +5624,455 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
                 </div>
 
+                {/* Data Backup & Restore */}
+                <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#74b9ff' }}><Download size={20} /> Data Backup & Restore</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '12px' }}>Export all your data (materials, fragrances, recipes, etc.) to a backup file.</p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            const backup = {
+                              version: 1,
+                              exportDate: new Date().toISOString(),
+                              data: { materials, fragrances, recipes, batchHistory, batchList, savedInstructions, savedChats, appDefaults }
+                            };
+                            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `light-by-dawn-backup-${new Date().toISOString().split('T')[0]}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          style={{ ...btnPrimary, background: 'linear-gradient(135deg, #74b9ff 0%, #55efc4 100%)' }}
+                        >
+                          <Download size={16} /> JSON
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Generate Excel-compatible HTML
+                            const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            const tableStyle = 'border-collapse: collapse; width: 100%; margin-bottom: 20px;';
+                            const thStyle = 'border: 1px solid #000; padding: 8px; background: #f0f0f0; font-weight: bold; text-align: left;';
+                            const tdStyle = 'border: 1px solid #000; padding: 8px;';
+
+                            let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+                              <head><meta charset="UTF-8"><style>table { ${tableStyle} } th { ${thStyle} } td { ${tdStyle} }</style></head><body>`;
+
+                            // Materials
+                            html += '<h2>Materials</h2><table><tr><th>ID</th><th>Category</th><th>Name</th><th>Vendor</th><th>Unit</th><th>Pkg Size</th><th>Pkg Cost</th><th>Qty On Hand</th><th>Reorder Pt</th></tr>';
+                            materials.forEach(m => {
+                              html += `<tr><td>${escapeHtml(m.id)}</td><td>${escapeHtml(m.category)}</td><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.vendor)}</td><td>${escapeHtml(m.unit)}</td><td>${m.packageSize || ''}</td><td>${m.packageCost || ''}</td><td>${m.qtyOnHand || ''}</td><td>${m.reorderPoint || ''}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            // Fragrances
+                            html += '<h2>Fragrances</h2><table><tr><th>ID</th><th>Name</th><th>Type</th><th>Vendor</th><th>Size (oz)</th><th>Cost</th><th>Qty On Hand</th><th>Notes</th></tr>';
+                            fragrances.forEach(f => {
+                              html += `<tr><td>${escapeHtml(f.id)}</td><td>${escapeHtml(f.name)}</td><td>${escapeHtml(f.type)}</td><td>${escapeHtml(f.vendor)}</td><td>${f.size || ''}</td><td>${f.cost || ''}</td><td>${f.qtyOnHand || ''}</td><td>${escapeHtml(f.notes)}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            // Recipes
+                            html += '<h2>Recipes</h2><table><tr><th>ID</th><th>Name</th><th>Vibe</th><th>FO Load %</th><th>Components</th><th>Description</th></tr>';
+                            recipes.forEach(r => {
+                              const comps = (r.components || []).map(c => `${c.fragrance} (${c.percent}%)`).join(', ');
+                              html += `<tr><td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.vibe)}</td><td>${r.foLoad || ''}</td><td>${escapeHtml(comps)}</td><td>${escapeHtml(r.description)}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            // Batch History
+                            html += '<h2>Batch History</h2><table><tr><th>ID</th><th>Date</th><th>Recipe</th><th>Qty</th><th>Size</th><th>Notes</th></tr>';
+                            batchHistory.forEach(b => {
+                              html += `<tr><td>${escapeHtml(b.id)}</td><td>${escapeHtml(b.date)}</td><td>${escapeHtml(b.recipeName || b.recipe)}</td><td>${b.quantity || b.qty || ''}</td><td>${b.size || ''}</td><td>${escapeHtml(b.notes)}</td></tr>`;
+                            });
+                            html += '</table></body></html>';
+
+                            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `light-by-dawn-${new Date().toISOString().split('T')[0]}.xls`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          style={{ ...btnSecondary }}
+                        >
+                          <Table size={16} /> Excel
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Generate PDF-ready HTML
+                            const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            const printWindow = window.open('', '_blank');
+                            let html = `<!DOCTYPE html><html><head><title>Light By Dawn - Inventory Report</title>
+                              <style>
+                                body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                                h1 { color: #1a0a1e; border-bottom: 2px solid #1a0a1e; padding-bottom: 8px; }
+                                h2 { color: #444; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+                                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 12px; }
+                                th { border: 1px solid #333; padding: 8px; background: #f5f5f5; text-align: left; }
+                                td { border: 1px solid #ddd; padding: 6px; }
+                                .summary { background: #f8f8f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+                                .summary span { margin-right: 20px; }
+                                @media print { body { padding: 0; } h1 { font-size: 18px; } h2 { font-size: 14px; } }
+                              </style>
+                            </head><body>`;
+
+                            html += `<h1>Light By Dawn - Inventory Report</h1>`;
+                            html += `<p>Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>`;
+                            html += `<div class="summary"><strong>Summary:</strong> <span>${materials.length} Materials</span><span>${fragrances.length} Fragrances</span><span>${recipes.length} Recipes</span><span>${batchHistory.length} Batches</span></div>`;
+
+                            // Materials
+                            html += '<h2>Materials</h2><table><tr><th>ID</th><th>Category</th><th>Name</th><th>Vendor</th><th>Unit</th><th>Pkg Size</th><th>Cost</th><th>On Hand</th><th>Reorder</th></tr>';
+                            materials.forEach(m => {
+                              html += `<tr><td>${escapeHtml(m.id)}</td><td>${escapeHtml(m.category)}</td><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.vendor)}</td><td>${escapeHtml(m.unit)}</td><td>${m.packageSize || '-'}</td><td>${(m.packageCost || 0).toFixed(2)}</td><td>${m.qtyOnHand || 0}</td><td>${m.reorderPoint || '-'}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            // Fragrances
+                            html += '<h2>Fragrances</h2><table><tr><th>ID</th><th>Name</th><th>Type</th><th>Vendor</th><th>Size</th><th>Cost</th><th>On Hand (oz)</th></tr>';
+                            fragrances.forEach(f => {
+                              html += `<tr><td>${escapeHtml(f.id)}</td><td>${escapeHtml(f.name)}</td><td>${escapeHtml(f.type)}</td><td>${escapeHtml(f.vendor)}</td><td>${f.size || '-'} oz</td><td>${(f.cost || 0).toFixed(2)}</td><td>${(f.qtyOnHand || 0).toFixed(1)}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            // Recipes
+                            html += '<h2>Recipes</h2><table><tr><th>ID</th><th>Name</th><th>Vibe</th><th>FO %</th><th>Components</th></tr>';
+                            recipes.filter(r => !r.archived).forEach(r => {
+                              const comps = (r.components || []).map(c => `${c.fragrance} (${c.percent}%)`).join(', ');
+                              html += `<tr><td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.vibe)}</td><td>${r.foLoad || '-'}%</td><td style="font-size:11px">${escapeHtml(comps)}</td></tr>`;
+                            });
+                            html += '</table>';
+
+                            html += '</body></html>';
+
+                            printWindow.document.write(html);
+                            printWindow.document.close();
+                            printWindow.print();
+                          }}
+                          style={{ ...btnSecondary }}
+                        >
+                          <Printer size={16} /> PDF
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(255,159,107,0.15)', paddingTop: '16px' }}>
+                      <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '12px' }}>Export individual categories:</p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {[
+                          { label: 'Materials', data: materials, filename: 'materials' },
+                          { label: 'Fragrances', data: fragrances, filename: 'fragrances' },
+                          { label: 'Recipes', data: recipes, filename: 'recipes' },
+                          { label: 'Batch History', data: batchHistory, filename: 'batch-history' },
+                          { label: 'Instructions', data: savedInstructions, filename: 'instructions' },
+                          { label: 'AI Chats', data: savedChats, filename: 'chats' },
+                        ].map(({ label, data, filename }) => (
+                          <button
+                            key={filename}
+                            onClick={() => {
+                              const exportData = { exportDate: new Date().toISOString(), [filename.replace('-', '')]: data };
+                              const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `light-by-dawn-${filename}-${new Date().toISOString().split('T')[0]}.json`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fce4d6', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            {label} ({data.length})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(255,159,107,0.15)', paddingTop: '16px' }}>
+                      <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '12px' }}>Restore data from a backup file. This will merge with existing data (new items added, existing items updated).</p>
+                      <input
+                        type="file"
+                        id="backup-import"
+                        accept=".json"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            try {
+                              const backup = JSON.parse(event.target.result);
+                              if (!backup.data) {
+                                alert('Invalid backup file format');
+                                return;
+                              }
+                              const d = backup.data;
+                              // Merge function: add new items, update existing by ID
+                              const mergeArrays = (existing, imported) => {
+                                const map = new Map(existing.map(item => [item.id, item]));
+                                imported.forEach(item => map.set(item.id, item));
+                                return Array.from(map.values());
+                              };
+                              if (d.materials) setMaterials(mergeArrays(materials, d.materials));
+                              if (d.fragrances) setFragrances(mergeArrays(fragrances, d.fragrances));
+                              if (d.recipes) setRecipes(mergeArrays(recipes, d.recipes));
+                              if (d.batchHistory) setBatchHistory(mergeArrays(batchHistory, d.batchHistory));
+                              if (d.batchList) setBatchList(mergeArrays(batchList, d.batchList));
+                              if (d.savedInstructions) setSavedInstructions(mergeArrays(savedInstructions, d.savedInstructions));
+                              if (d.savedChats) setSavedChats(mergeArrays(savedChats, d.savedChats));
+                              if (d.appDefaults) setAppDefaults({ ...appDefaults, ...d.appDefaults });
+                              alert(`Backup restored successfully!\nImported: ${d.materials?.length || 0} materials, ${d.fragrances?.length || 0} fragrances, ${d.recipes?.length || 0} recipes`);
+                            } catch (err) {
+                              alert('Error reading backup file: ' + err.message);
+                            }
+                          };
+                          reader.readAsText(file);
+                          e.target.value = ''; // Reset input
+                        }}
+                      />
+                      <button
+                        onClick={() => document.getElementById('backup-import').click()}
+                        style={{ ...btnSecondary }}
+                      >
+                        <FileText size={16} /> Import Backup
+                      </button>
+                    </div>
+                    <div style={{ background: 'rgba(255,107,107,0.1)', borderRadius: '8px', padding: '12px', marginTop: '8px' }}>
+                      <p style={{ fontSize: '12px', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertTriangle size={14} /> Tip: Export a backup before making major changes or syncing across devices.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
               </div>
+            </div>
+          )}
+
+          {/* Sales Page - Shopify Integration */}
+          {activeTab === 'sales' && (
+            <div>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h2 className="page-title" style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', marginBottom: '8px', background: 'linear-gradient(135deg, #55efc4 0%, #74b9ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Sales Dashboard</h2>
+                  <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Shopify orders and sales data</p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {shopifyLastSync && (
+                    <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>
+                      Last synced: {new Date(shopifyLastSync).toLocaleTimeString()}
+                    </span>
+                  )}
+                  <button
+                    onClick={fetchShopifyData}
+                    disabled={shopifyLoading}
+                    style={{
+                      ...btnPrimary,
+                      opacity: shopifyLoading ? 0.7 : 1,
+                      background: 'linear-gradient(135deg, #55efc4 0%, #74b9ff 100%)'
+                    }}
+                  >
+                    <RefreshCw size={16} className={shopifyLoading ? 'animate-spin' : ''} />
+                    {shopifyLoading ? 'Syncing...' : 'Sync Shopify'}
+                  </button>
+                </div>
+              </div>
+
+              {shopifyError && (
+                <div style={{ background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '12px', padding: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <AlertTriangle size={20} style={{ color: '#ff6b6b' }} />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#ff6b6b' }}>Connection Error</div>
+                    <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>{shopifyError}</div>
+                  </div>
+                </div>
+              )}
+
+              {!shopifyLoading && shopifyOrders.length === 0 && !shopifyError && (
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <Store size={64} style={{ color: 'rgba(252,228,214,0.2)', marginBottom: '20px' }} />
+                  <h3 style={{ fontSize: '20px', marginBottom: '12px' }}>No Orders Yet</h3>
+                  <p style={{ color: 'rgba(252,228,214,0.6)', marginBottom: '24px' }}>Click "Sync Shopify" to fetch your orders</p>
+                  <button onClick={fetchShopifyData} style={{ ...btnPrimary, background: 'linear-gradient(135deg, #55efc4 0%, #74b9ff 100%)' }}>
+                    <RefreshCw size={16} /> Sync Now
+                  </button>
+                </div>
+              )}
+
+              {shopifyOrders.length > 0 && (
+                <>
+                  {/* Stats Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+                    {(() => {
+                      const totalRevenue = shopifyOrders.reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
+                      const paidOrders = shopifyOrders.filter(o => o.financial_status === 'paid');
+                      const pendingOrders = shopifyOrders.filter(o => o.fulfillment_status !== 'fulfilled' && o.financial_status === 'paid');
+                      const thisMonth = shopifyOrders.filter(o => {
+                        const orderDate = new Date(o.created_at);
+                        const now = new Date();
+                        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+                      });
+                      const monthlyRevenue = thisMonth.reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
+
+                      return [
+                        { label: 'Total Orders', value: shopifyOrders.length, color: '#74b9ff' },
+                        { label: 'Total Revenue', value: formatCurrency(totalRevenue), color: '#55efc4' },
+                        { label: 'This Month', value: formatCurrency(monthlyRevenue), color: '#feca57' },
+                        { label: 'Pending Fulfillment', value: pendingOrders.length, color: '#ff9ff3' }
+                      ].map((stat, i) => (
+                        <div key={i} style={{ background: `rgba(${stat.color === '#74b9ff' ? '116,185,255' : stat.color === '#55efc4' ? '85,239,196' : stat.color === '#feca57' ? '254,202,87' : '255,159,243'},0.1)`, border: `1px solid rgba(${stat.color === '#74b9ff' ? '116,185,255' : stat.color === '#55efc4' ? '85,239,196' : stat.color === '#feca57' ? '254,202,87' : '255,159,243'},0.2)`, borderRadius: '12px', padding: '20px' }}>
+                          <div style={{ fontSize: '28px', fontWeight: 700, color: stat.color, marginBottom: '4px' }}>{stat.value}</div>
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+
+                  {/* Orders Table */}
+                  <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                    <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,159,107,0.15)' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ShoppingCart size={18} /> Recent Orders
+                      </h3>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(0,0,0,0.2)', fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            <th style={{ padding: '12px 16px', textAlign: 'left' }}>Order</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'left' }}>Customer</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'left' }}>Items</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Total</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'center' }}>Payment</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'center' }}>Fulfillment</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'left' }}>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shopifyOrders.slice(0, 50).map(order => (
+                            <tr key={order.id} style={{ borderTop: '1px solid rgba(255,159,107,0.1)' }}>
+                              <td style={{ padding: '12px 16px' }}>
+                                <span style={{ fontWeight: 600, color: '#74b9ff' }}>#{order.order_number}</span>
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <div>{order.customer?.first_name} {order.customer?.last_name}</div>
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{order.customer?.email}</div>
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {order.line_items?.slice(0, 3).map((item, i) => (
+                                    <span key={i} style={{ fontSize: '11px', background: 'rgba(162,155,254,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                      {item.quantity}x {item.title?.substring(0, 20)}{item.title?.length > 20 ? '...' : ''}
+                                    </span>
+                                  ))}
+                                  {order.line_items?.length > 3 && (
+                                    <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>+{order.line_items.length - 3} more</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#55efc4' }}>
+                                {formatCurrency(parseFloat(order.total_price))}
+                              </td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  background: order.financial_status === 'paid' ? 'rgba(85,239,196,0.2)' : order.financial_status === 'pending' ? 'rgba(254,202,87,0.2)' : 'rgba(255,107,107,0.2)',
+                                  color: order.financial_status === 'paid' ? '#55efc4' : order.financial_status === 'pending' ? '#feca57' : '#ff6b6b'
+                                }}>
+                                  {order.financial_status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  background: order.fulfillment_status === 'fulfilled' ? 'rgba(85,239,196,0.2)' : 'rgba(255,159,243,0.2)',
+                                  color: order.fulfillment_status === 'fulfilled' ? '#55efc4' : '#ff9ff3'
+                                }}>
+                                  {order.fulfillment_status || 'unfulfilled'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px 16px', fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Products Section */}
+                  {shopifyProducts.length > 0 && (
+                    <div style={{ marginTop: '32px', background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                      <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,159,107,0.15)' }}>
+                        <h3 style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Package size={18} /> Shopify Products ({shopifyProducts.length})
+                        </h3>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', padding: '20px' }}>
+                        {shopifyProducts.map(product => (
+                          <div key={product.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                            {product.image?.src && (
+                              <img src={product.image.src} alt={product.title} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
+                            )}
+                            <div style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{product.title}</div>
+                              <div style={{ fontSize: '12px', color: '#55efc4' }}>
+                                {product.variants?.[0]?.price ? formatCurrency(parseFloat(product.variants[0].price)) : 'No price'}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginTop: '4px' }}>
+                                {product.variants?.reduce((sum, v) => sum + (v.inventory_quantity || 0), 0)} in stock
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </main>
       </div>
+
+      {/* URL Import Modal */}
+      {showUrlImportModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '20px', padding: '32px', width: '500px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Import from URL</h2>
+              <button onClick={() => { setShowUrlImportModal(false); setUrlImportInput(''); }} style={{ background: 'none', border: 'none', color: 'rgba(252,228,214,0.6)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            <p style={{ color: 'rgba(252,228,214,0.7)', fontSize: '14px', marginBottom: '16px' }}>
+              Paste a product URL from CandleScience or Amazon. AI will extract the product details automatically.
+            </p>
+            <input
+              type="text"
+              value={urlImportInput}
+              onChange={(e) => setUrlImportInput(e.target.value)}
+              placeholder="https://www.candlescience.com/wax/..."
+              style={{ width: '100%', padding: '14px 16px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '10px', color: '#fce4d6', fontSize: '14px', marginBottom: '20px' }}
+              onKeyDown={(e) => e.key === 'Enter' && !urlImportLoading && importMaterialFromUrl()}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowUrlImportModal(false); setUrlImportInput(''); }} style={{ padding: '12px 24px', background: 'rgba(255,159,107,0.1)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
+              <button onClick={importMaterialFromUrl} disabled={urlImportLoading} style={{ padding: '12px 24px', background: urlImportLoading ? 'rgba(255,159,107,0.3)' : 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', border: 'none', borderRadius: '10px', color: urlImportLoading ? 'rgba(252,228,214,0.5)' : '#1a0a1e', cursor: urlImportLoading ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {urlImportLoading ? (
+                  <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Importing...</>
+                ) : (
+                  <><Sparkles size={16} /> Import with AI</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Material Modal */}
       {showMaterialModal && (
@@ -5313,7 +6080,22 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           <div style={{ background: 'linear-gradient(135deg, #2d1b3d 0%, #3d1f35 100%)', border: '1px solid rgba(255,159,107,0.3)', borderRadius: '20px', padding: '32px', width: '550px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{editingMaterial ? 'Edit Material' : 'Add Material'}</h2>
-              <button onClick={() => setShowMaterialModal(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {editingMaterial && (
+                  <button
+                    onClick={() => {
+                      const newId = generateMaterialId(materialForm.category);
+                      setMaterialForm({ ...materialForm, id: newId, name: materialForm.name + ' (Copy)' });
+                      setEditingMaterial(null);
+                    }}
+                    style={{ padding: '8px 12px', background: 'rgba(162,155,254,0.2)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: '#a29bfe', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                    title="Duplicate this material"
+                  >
+                    <Copy size={16} /> Duplicate
+                  </button>
+                )}
+                <button onClick={() => setShowMaterialModal(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -5335,7 +6117,26 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Vendor</label>
-                <input type="text" value={materialForm.vendor} onChange={e => setMaterialForm({ ...materialForm, vendor: e.target.value })} placeholder="e.g., CandleScience" style={inputStyle} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="text" value={materialForm.vendor} onChange={e => setMaterialForm({ ...materialForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
+                  {materialForm.vendor && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const vendor = materialForm.vendor.trim();
+                        if (vendor.startsWith('http://') || vendor.startsWith('https://')) {
+                          window.open(vendor, '_blank');
+                        } else {
+                          window.open(`https://www.google.com/search?q=${encodeURIComponent(vendor)}`, '_blank');
+                        }
+                      }}
+                      style={{ padding: '10px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', color: '#74b9ff', cursor: 'pointer' }}
+                      title={materialForm.vendor.startsWith('http') ? 'Open link' : 'Search vendor'}
+                    >
+                      <ExternalLink size={18} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
@@ -5905,7 +6706,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
                   <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Wax</div>
                   <div style={{ fontSize: '18px', fontWeight: 600 }}>{batchInstructions.wax || 'Not specified'}</div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.calc?.totalWaxBatch?.toFixed(1) || 0} oz ({(batchInstructions.calc?.totalWaxBatch / 16)?.toFixed(2) || 0} lbs)</div>
+                  <div style={{ fontSize: '14px', color: '#666' }}>{batchInstructions.calc?.totalWaxBatch?.toFixed(1) || 0} oz ({(batchInstructions.calc?.totalWaxBatch / 16)?.toFixed(2) || 0} lbs) • {ozToGrams(batchInstructions.calc?.totalWaxBatch || 0)}g</div>
                 </div>
                 <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px' }}>
                   <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase' }}>Container</div>
@@ -5928,13 +6729,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
             {/* Fragrance Breakdown */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', borderBottom: '2px solid #1a0a1e', paddingBottom: '4px' }}>Fragrance Breakdown</h2>
-              <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>Total Fragrance: <strong>{batchInstructions.calc?.totalFoBatch?.toFixed(2) || 0} oz</strong></div>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>Total Fragrance: <strong>{batchInstructions.calc?.totalFoBatch?.toFixed(2) || 0} oz</strong> ({ozToMl(batchInstructions.calc?.totalFoBatch || 0)} ml / {ozToGrams(batchInstructions.calc?.totalFoBatch || 0)}g)</div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#f5f5f5' }}>
                     <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase' }}>Fragrance</th>
                     <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center', fontSize: '12px', textTransform: 'uppercase' }}>%</th>
-                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontSize: '12px', textTransform: 'uppercase' }}>Amount (oz)</th>
+                    <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontSize: '12px', textTransform: 'uppercase' }}>Amount</th>
                     <th style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center', fontSize: '12px', textTransform: 'uppercase', width: '40px' }}>✓</th>
                   </tr>
                 </thead>
@@ -5946,7 +6747,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       <tr key={i}>
                         <td style={{ border: '1px solid #ddd', padding: '10px', fontWeight: 500 }}>{comp.fragrance}</td>
                         <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}>{comp.percent}%</td>
-                        <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontWeight: 600 }}>{compOz.toFixed(2)} oz</td>
+                        <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'right', fontWeight: 600 }}>{compOz.toFixed(2)} oz<br/><span style={{ fontSize: '11px', fontWeight: 400, color: '#888' }}>{ozToMl(compOz)} ml / {ozToGrams(compOz)}g</span></td>
                         <td style={{ border: '1px solid #ddd', padding: '10px', textAlign: 'center' }}><span style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid #1a0a1e' }}></span></td>
                       </tr>
                     );
@@ -6021,19 +6822,62 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
         </div>
       )}
 
-      {/* Floating AI Chat Button */}
+      {/* Floating AI Chat Button - Draggable & Sparkly */}
       <button
-        onClick={() => setShowGeneralChat(!showGeneralChat)}
+        onClick={() => {
+          // Only toggle if we didn't drag
+          if (!fabDragMoved.current) {
+            setShowGeneralChat(!showGeneralChat);
+          }
+        }}
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          fabDragOffset.current = {
+            x: touch.clientX - rect.left,
+            y: touch.clientY - rect.top
+          };
+          fabDragMoved.current = false;
+          setIsFabDragging(true);
+        }}
+        onTouchMove={(e) => {
+          if (!isFabDragging) return;
+          fabDragMoved.current = true;
+          const touch = e.touches[0];
+          const newX = Math.max(0, Math.min(window.innerWidth - 48, touch.clientX - fabDragOffset.current.x));
+          const newY = Math.max(0, Math.min(window.innerHeight - 48, touch.clientY - fabDragOffset.current.y));
+          setMobileAiFabPos({ x: newX, y: newY });
+        }}
+        onTouchEnd={() => {
+          setIsFabDragging(false);
+          setTimeout(() => { fabDragMoved.current = false; }, 100);
+        }}
         style={{
-          position: 'fixed', bottom: '24px', right: '24px', width: '60px', height: '60px',
-          borderRadius: '50%', background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
-          border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(162,155,254,0.4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 900,
+          position: 'fixed',
+          ...(mobileAiFabPos.x !== null ? {
+            left: mobileAiFabPos.x,
+            top: mobileAiFabPos.y
+          } : {
+            bottom: '24px',
+            right: '24px'
+          }),
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #a29bfe 0%, #ff9ff3 100%)',
+          border: 'none',
+          cursor: 'grab',
+          boxShadow: '0 4px 20px rgba(162,155,254,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 900,
+          touchAction: 'none',
           transition: 'transform 0.2s ease'
         }}
         title="AI Assistant"
       >
-        <MessageSquare size={28} color="#1a0a1e" />
+        <Sparkles size={22} color="#fff" />
       </button>
 
       {/* General AI Chat Panel */}
