@@ -1480,22 +1480,38 @@ export default function CandleBusinessApp() {
       else if (urlImportInput.includes('amazon.com')) vendor = 'Amazon';
       else if (urlImportInput.includes('lonestarcandle')) vendor = 'Lone Star';
 
+      // Check for Amazon bot protection
+      if (vendor === 'Amazon' && (cleanedContent.includes('Continue shopping') || cleanedContent.length < 500)) {
+        throw new Error('Amazon blocks automated access. Please copy product details manually.');
+      }
+
       // Use Gemini to extract product info
-      const prompt = `Extract candle-making material information from this product page content. Return ONLY valid JSON with these exact fields (no markdown, no explanation):
+      const prompt = `You are extracting product information from a candle-making supply website.
+
+IMPORTANT: Look for the MAIN PRODUCT on this page and extract its details.
+
+From this page content, find and return ONLY a JSON object (no markdown, no backticks, no explanation):
+
 {
-  "name": "product name (clean, without brand prefix)",
-  "category": "one of: Wax, Container, Wick, Label, Packaging, Unit",
-  "packageSize": number (quantity per package, e.g., 10 for 10lb, 12 for case of 12),
-  "unit": "lb, oz, unit, case, pack, or roll",
-  "packageCost": number (price in dollars),
-  "fillCapacity": number or null (only for containers - the oz capacity, e.g., 8 for 8oz jar)
+  "name": "the main product name from the page title or heading",
+  "category": "Wax" or "Container" or "Wick" or "Label" or "Packaging" or "Unit",
+  "packageSize": the number of items or weight (e.g., 10 for 10lb bag, 12 for case of 12 jars),
+  "unit": "lb" or "oz" or "unit" or "case" or "pack" or "roll",
+  "packageCost": the price as a number without $ sign,
+  "fillCapacity": for containers only - the oz capacity (e.g., 8 for 8oz jar), otherwise null
 }
 
-Product URL: ${urlImportInput}
+RULES:
+- For wax products, look for weight in lbs (e.g., "10 lb" means packageSize=10, unit="lb")
+- For containers/jars, packageSize is how many jars, fillCapacity is the oz size of each jar
+- Category is based on product type: wax/soy wax = "Wax", jars/tins/vessels = "Container", wicks = "Wick"
+- Find the actual price on the page (look for $ amounts)
+
+Page URL: ${urlImportInput}
 Vendor: ${vendor}
 
-Page content:
-${cleanedContent}`;
+PAGE CONTENT:
+${cleanedContent.substring(0, 12000)}`;
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
@@ -1519,7 +1535,17 @@ ${cleanedContent}`;
 
       const productInfo = JSON.parse(jsonStr);
 
+      // Validate extracted data
+      if (!productInfo.name || productInfo.name.length < 2) {
+        throw new Error('Could not extract product name. Please enter details manually.');
+      }
+
       // Generate ID based on category
+      const validCategories = ['Wax', 'Container', 'Wick', 'Label', 'Packaging', 'Unit'];
+      if (!validCategories.includes(productInfo.category)) {
+        productInfo.category = 'Unit'; // Default fallback
+      }
+
       const prefixes = { Wax: 'W', Container: 'C', Wick: 'K', Label: 'L', Packaging: 'P', Unit: 'U' };
       const prefix = prefixes[productInfo.category] || 'M';
       const existingInCategory = materials.filter(m => m.id.startsWith(prefix + '-')).length;
