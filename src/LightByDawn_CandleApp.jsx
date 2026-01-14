@@ -190,6 +190,22 @@ const toCamelCase = (obj) => {
   );
 };
 
+// Shorten long URLs (especially Amazon) using TinyURL
+const shortenUrl = async (url) => {
+  // Only shorten if URL is long or is Amazon
+  if (url.length < 80 && !url.includes('amazon.com')) return url;
+  try {
+    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+    if (response.ok) {
+      const shortUrl = await response.text();
+      if (shortUrl.startsWith('http')) return shortUrl;
+    }
+  } catch (error) {
+    console.warn('URL shortening failed:', error);
+  }
+  return url; // Return original if shortening fails
+};
+
 export default function CandleBusinessApp() {
   const [activeTab, setActiveTab] = useState(() => loadFromStorage('activeTab', 'dashboard'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1611,12 +1627,15 @@ ${cleanedContent.substring(0, 12000)}`;
       const existingInCategory = materials.filter(m => m.id.startsWith(prefix + '-')).length;
       const newId = `${prefix}-${String(existingInCategory + 1).padStart(3, '0')}`;
 
+      // Shorten URL for vendor field (especially Amazon links)
+      const vendorUrl = await shortenUrl(urlImportInput);
+
       // Pre-fill the material form
       setMaterialForm({
         id: newId,
         category: productInfo.category || 'Unit',
         name: productInfo.name || '',
-        vendor: urlImportInput,
+        vendor: vendorUrl,
         unit: productInfo.unit || 'unit',
         packageSize: productInfo.packageSize || 1,
         packageCost: productInfo.packageCost || 0,
@@ -1819,11 +1838,14 @@ ${cleanedContent.substring(0, 12000)}`;
       const pkgSize = [16, 8, 4, 1, 0.5].find(s => prices[s] > 0) || 16;
       const pkgCost = prices[pkgSize] || 0;
 
+      // Shorten URL for vendor field (especially Amazon links)
+      const vendorUrl = await shortenUrl(urlImportInput);
+
       setFragranceForm({
         id: newId,
         name: productInfo.name || '',
         type: productInfo.type === 'EO' ? 'EO' : 'FO',
-        vendor: urlImportInput,
+        vendor: vendorUrl,
         packageSize: pkgSize,
         packageCost: pkgCost,
         prices: prices,
