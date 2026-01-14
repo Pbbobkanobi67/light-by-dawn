@@ -98,9 +98,11 @@ const categoryColors = {
 const VendorLink = ({ vendor, style = {} }) => {
   if (!vendor) return null;
   const isUrl = vendor.startsWith('http');
-  const baseStyle = { color: '#a29bfe', textDecoration: 'none', ...style };
+  const baseStyle = { color: '#a29bfe', textDecoration: 'none', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'bottom', ...style };
 
   if (isUrl) {
+    // Extract domain name from URL
+    const domain = vendor.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
     return (
       <a
         href={vendor}
@@ -108,8 +110,9 @@ const VendorLink = ({ vendor, style = {} }) => {
         rel="noopener noreferrer"
         style={baseStyle}
         onClick={(e) => e.stopPropagation()}
+        title={vendor}
       >
-        {vendor.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+        {domain}
       </a>
     );
   }
