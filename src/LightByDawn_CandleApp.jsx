@@ -6429,21 +6429,38 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="text" value={materialForm.vendor} onChange={e => setMaterialForm({ ...materialForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
                   {materialForm.vendor && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const vendor = materialForm.vendor.trim();
-                        if (vendor.startsWith('http://') || vendor.startsWith('https://')) {
-                          window.open(vendor, '_blank');
-                        } else {
-                          window.open(`https://www.google.com/search?q=${encodeURIComponent(vendor)}`, '_blank');
-                        }
-                      }}
-                      style={{ padding: '10px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', color: '#74b9ff', cursor: 'pointer' }}
-                      title={materialForm.vendor.startsWith('http') ? 'Open link' : 'Search vendor'}
-                    >
-                      <ExternalLink size={18} />
-                    </button>
+                    <>
+                      {materialForm.vendor.startsWith('http') && materialForm.vendor.length > 50 && !materialForm.vendor.includes('tinyurl.com') && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const short = await shortenUrl(materialForm.vendor);
+                            if (short !== materialForm.vendor) {
+                              setMaterialForm({ ...materialForm, vendor: short });
+                            }
+                          }}
+                          style={{ padding: '10px 12px', background: 'rgba(162,155,254,0.2)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: '#a29bfe', cursor: 'pointer' }}
+                          title="Shorten URL"
+                        >
+                          <Link size={18} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const vendor = materialForm.vendor.trim();
+                          if (vendor.startsWith('http://') || vendor.startsWith('https://')) {
+                            window.open(vendor, '_blank');
+                          } else {
+                            window.open(`https://www.google.com/search?q=${encodeURIComponent(vendor)}`, '_blank');
+                          }
+                        }}
+                        style={{ padding: '10px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', color: '#74b9ff', cursor: 'pointer' }}
+                        title={materialForm.vendor.startsWith('http') ? 'Open link' : 'Search vendor'}
+                      >
+                        <ExternalLink size={18} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -6536,7 +6553,43 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Vendor</label>
-                  <input type="text" value={fragranceForm.vendor} onChange={e => setFragranceForm({ ...fragranceForm, vendor: e.target.value })} placeholder="e.g., CandleScience" style={inputStyle} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input type="text" value={fragranceForm.vendor} onChange={e => setFragranceForm({ ...fragranceForm, vendor: e.target.value })} placeholder="e.g., CandleScience or https://..." style={{ ...inputStyle, flex: 1 }} />
+                    {fragranceForm.vendor && (
+                      <>
+                        {fragranceForm.vendor.startsWith('http') && fragranceForm.vendor.length > 50 && !fragranceForm.vendor.includes('tinyurl.com') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const short = await shortenUrl(fragranceForm.vendor);
+                              if (short !== fragranceForm.vendor) {
+                                setFragranceForm({ ...fragranceForm, vendor: short });
+                              }
+                            }}
+                            style={{ padding: '10px 12px', background: 'rgba(162,155,254,0.2)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', color: '#a29bfe', cursor: 'pointer' }}
+                            title="Shorten URL"
+                          >
+                            <Link size={18} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const vendor = fragranceForm.vendor.trim();
+                            if (vendor.startsWith('http://') || vendor.startsWith('https://')) {
+                              window.open(vendor, '_blank');
+                            } else {
+                              window.open(`https://www.google.com/search?q=${encodeURIComponent(vendor)}`, '_blank');
+                            }
+                          }}
+                          style={{ padding: '10px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', color: '#74b9ff', cursor: 'pointer' }}
+                          title={fragranceForm.vendor.startsWith('http') ? 'Open link' : 'Search vendor'}
+                        >
+                          <ExternalLink size={18} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
