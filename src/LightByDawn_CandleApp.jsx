@@ -4051,7 +4051,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
               </div>
 
-              <div className="instructions-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+              <div className="instructions-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px' }}>
                 {/* Main Content Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {/* AI Conversation Section */}
