@@ -94,6 +94,55 @@ const categoryColors = {
   Fragrance: { bg: 'rgba(253,203,110,0.2)', text: '#fdcb6e' },
 };
 
+// Vendor link helper - renders vendor as clickable link if it's a URL
+const VendorLink = ({ vendor, style = {} }) => {
+  if (!vendor) return null;
+  const isUrl = vendor.startsWith('http');
+  const baseStyle = { color: '#a29bfe', textDecoration: 'none', ...style };
+
+  if (isUrl) {
+    return (
+      <a
+        href={vendor}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={baseStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {vendor.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+      </a>
+    );
+  }
+
+  // For known vendors, link to their website
+  const vendorUrls = {
+    'CandleScience': 'https://www.candlescience.com',
+    'Amazon': 'https://www.amazon.com',
+    'Lone Star': 'https://www.lonestarcandlesupply.com',
+    'Plant Therapy': 'https://www.planttherapy.com',
+    'Fillmore': 'https://www.fillmorecontainer.com',
+    'Uline': 'https://www.uline.com',
+    'Aztec': 'https://www.azteccandle.com',
+  };
+
+  const url = vendorUrls[vendor];
+  if (url) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={baseStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {vendor}
+      </a>
+    );
+  }
+
+  return <span style={{ color: 'rgba(252,228,214,0.7)', ...style }}>{vendor}</span>;
+};
+
 // localStorage helpers (fallback for offline)
 const STORAGE_KEY = 'lightByDawn_data';
 
@@ -4648,7 +4697,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         </div>
                         <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>{m.name}</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px', marginBottom: '12px' }}>
-                          <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> {m.vendor}</div>
+                          <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> <VendorLink vendor={m.vendor} /></div>
                           <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Pkg:</span> {m.packageSize} {m.unit}</div>
                           <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Cost:</span> {formatCurrency(m.packageCost)}</div>
                           <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>$/unit:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{formatCurrency(m.packageCost / m.packageSize)}</span></div>
@@ -4688,7 +4737,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         <span className="item-category" style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', background: categoryColors[m.category]?.bg || 'rgba(255,255,255,0.1)', color: categoryColors[m.category]?.text || '#fff', width: '80px', textAlign: 'center' }}>{m.category}</span>
                         <div className="item-info" style={{ flex: 1 }}>
                           <h4 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '2px' }}>{m.name}</h4>
-                          <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{m.vendor} • {m.packageSize} {m.unit} • {formatCurrency(m.packageCost)}</span>
+                          <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}><VendorLink vendor={m.vendor} style={{ fontSize: '12px' }} /> • {m.packageSize} {m.unit} • {formatCurrency(m.packageCost)}</span>
                         </div>
                         <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{formatCurrency(m.packageCost / m.packageSize)}/unit</div>
@@ -4752,7 +4801,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', background: categoryColors[m.category]?.bg || 'rgba(255,255,255,0.1)', color: categoryColors[m.category]?.text || '#fff' }}>{m.category}</span>
                             </td>
                             <td style={{ padding: '14px 16px', fontWeight: 500 }}>{m.name}</td>
-                            <td style={{ padding: '14px 16px', color: 'rgba(252,228,214,0.7)' }}>{m.vendor}</td>
+                            <td style={{ padding: '14px 16px' }}><VendorLink vendor={m.vendor} /></td>
                             <td style={{ padding: '14px 16px' }}>{m.packageSize} {m.unit}</td>
                             <td style={{ padding: '14px 16px' }}>{formatCurrency(m.packageCost)}</td>
                             <td style={{ padding: '14px 16px', color: '#feca57', fontWeight: 600 }}>{formatCurrency(m.packageCost / m.packageSize)}</td>
@@ -4904,7 +4953,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               </div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
-                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> {f.vendor}</div>
+                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> <VendorLink vendor={f.vendor} /></div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Stock:</span> <span style={{ color: '#55efc4', fontWeight: 600 }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span></div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Max Load:</span> {f.maxLoad}%</div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Avg $/oz:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</span></div>
@@ -4930,7 +4979,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                 <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{f.name}</h4>
                                 <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
                               </div>
-                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{f.vendor} • <span style={{ color: '#55efc4' }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span></div>
+                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}><VendorLink vendor={f.vendor} style={{ fontSize: '12px' }} /> • <span style={{ color: '#55efc4' }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span></div>
                             </div>
                             <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                               <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}/oz</div>
@@ -4974,7 +5023,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                 <td style={{ padding: '14px 16px' }}>
                                   <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
                                 </td>
-                                <td style={{ padding: '14px 16px', color: 'rgba(252,228,214,0.7)' }}>{f.vendor}</td>
+                                <td style={{ padding: '14px 16px' }}><VendorLink vendor={f.vendor} /></td>
                                 <td style={{ padding: '14px 16px', color: '#55efc4', fontWeight: 600 }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</td>
                                 <td style={{ padding: '14px 16px', color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</td>
                                 <td style={{ padding: '14px 16px' }}>{f.maxLoad}%</td>
