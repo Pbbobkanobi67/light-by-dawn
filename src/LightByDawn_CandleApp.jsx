@@ -1733,30 +1733,30 @@ ${cleanedContent.substring(0, 12000)}`;
       // Use Gemini to extract fragrance info
       const prompt = `You are extracting fragrance oil/essential oil product information from a candle-making supply website.
 
-IMPORTANT: Look for the MAIN FRAGRANCE PRODUCT on this page and extract ALL available sizes and prices.
+IMPORTANT: Extract ALL available bottle sizes and their total prices from this product page.
 
 From this page content, find and return ONLY a JSON object (no markdown, no backticks, no explanation):
 
 {
-  "name": "the fragrance name (clean, without 'fragrance oil' suffix)",
+  "name": "the fragrance name (clean, without 'fragrance oil' or 'essential oil' suffix)",
   "type": "FO" for fragrance oil or "EO" for essential oil,
   "prices": {
-    "1": price for 1oz size or 0 if not available,
-    "4": price for 4oz size or 0 if not available,
-    "8": price for 8oz size or 0 if not available,
-    "16": price for 16oz size or 0 if not available
+    "1": total price for 1oz bottle or 0 if not available,
+    "4": total price for 4oz bottle or 0 if not available,
+    "8": total price for 8oz bottle or 0 if not available,
+    "16": total price for 15oz or 16oz bottle or 0 if not available
   },
-  "flashPoint": the flash point temperature in Fahrenheit (number, default 200 if not found),
-  "maxLoad": maximum fragrance load percentage (number, default 10 if not found)
+  "flashPoint": flash point temperature in Fahrenheit (number),
+  "maxLoad": max fragrance load percentage for candles (number)
 }
 
-RULES:
-- type is "FO" for fragrance oils, "EO" for essential oils
-- IMPORTANT: Extract ALL size/price options available on the page (look for 1oz, 4oz, 8oz, 16oz prices)
-- Common sizes are 1, 4, 8, 16 oz - find each price if listed
-- flashPoint is in Fahrenheit (look for "flash point" on the page)
-- maxLoad is the recommended max % (look for "max load" or "usage rate", default 10)
-- Prices should be numbers without $ sign
+EXTRACTION RULES:
+- Look for patterns like "1 oz Bottle ($X.XX)" or "4 oz - $X.XX"
+- The page shows "Choose a Variant" followed by size options with prices
+- For 16oz field: use 15oz or 16oz price (whichever is listed)
+- Extract the TOTAL PRICE for each bottle, not the per-oz price
+- flashPoint: look for "Flashpoint" or "Flash Point" followed by temperature
+- maxLoad: look for "Max Load" or "recommended usage" percentage (default 10 if not found)
 
 Page URL: ${urlImportInput}
 Vendor: ${vendor}
