@@ -2002,19 +2002,22 @@ ${cleanedContent.substring(0, 12000)}`;
     const totalPercent = recipeForm.components.reduce((sum, c) => sum + (parseFloat(c.percent) || 0), 0);
     if (totalPercent !== 100) return;
     if (!recipeForm.name) return;
-    
+
+    // Build the recipe object with appropriate ID
+    const recipeId = editingRecipe || `RCP-${String(recipes.length + 1).padStart(3, '0')}`;
+    const recipeToSave = { ...recipeForm, id: recipeId };
+
     // Save to Supabase FIRST
-    const { error } = await supabase.from('recipes').upsert([toSnakeCase(newRecipe)], { onConflict: 'id' });
+    const { error } = await supabase.from('recipes').upsert([toSnakeCase(recipeToSave)], { onConflict: 'id' });
     if (error) {
       alert('Failed to save: ' + error.message);
       return;
     }
 
     if (editingRecipe) {
-      setRecipes(recipes.map(r => r.id === editingRecipe ? { ...recipeForm, id: editingRecipe } : r));
+      setRecipes(recipes.map(r => r.id === editingRecipe ? recipeToSave : r));
     } else {
-      const newId = `RCP-${String(recipes.length + 1).padStart(3, '0')}`;
-      setRecipes([...recipes, { ...recipeForm, id: newId }]);
+      setRecipes([...recipes, recipeToSave]);
     }
     setShowRecipeModal(false);
   };
