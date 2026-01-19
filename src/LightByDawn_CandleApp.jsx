@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move, Store, RefreshCw } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move, Store, RefreshCw, Info } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -6909,6 +6909,104 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (total oz)</label>
                 <input type="number" step="0.5" value={fragranceForm.reorderPoint} onChange={e => setFragranceForm({ ...fragranceForm, reorderPoint: parseFloat(e.target.value) || 0 })} style={inputStyle} />
               </div>
+
+              {/* Tracked Bottles Section */}
+              {(() => {
+                const bottlesForFragrance = fragranceBottles.filter(b =>
+                  b.fragranceName === fragranceForm.name && b.status !== 'archived'
+                );
+                const totalFromBottles = getTotalOzForFragrance(fragranceForm.name, fragranceBottles);
+                const hasBottles = bottlesForFragrance.length > 0;
+
+                return (
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Scale size={14} /> Tracked Bottles
+                        {hasBottles && (
+                          <span style={{ fontSize: '10px', padding: '2px 6px', background: 'rgba(85,239,196,0.2)', borderRadius: '10px', color: '#55efc4' }}>
+                            Smart Sync Active
+                          </span>
+                        )}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Pre-fill bottle form with this fragrance
+                          const fragId = editingFragrance || `FO-${Date.now()}`;
+                          setBottleForm({
+                            fragranceId: fragId,
+                            fragranceName: fragranceForm.name,
+                            vendor: fragranceForm.vendor || '',
+                            purchaseDate: new Date().toISOString().split('T')[0],
+                            purchaseSizeOz: 16,
+                            purchasePriceTotal: fragranceForm.prices?.[16] || 0,
+                            grossWeightGrams: null,
+                            tareWeightGrams: null,
+                            currentWeightGrams: null,
+                            notes: '',
+                            isNewBottle: false,
+                          });
+                          setShowAddBottleModal(true);
+                        }}
+                        disabled={!fragranceForm.name}
+                        style={{
+                          padding: '6px 12px',
+                          background: fragranceForm.name ? 'rgba(255,159,107,0.2)' : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${fragranceForm.name ? 'rgba(255,159,107,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                          borderRadius: '8px',
+                          color: fragranceForm.name ? '#ff9f6b' : 'rgba(252,228,214,0.3)',
+                          cursor: fragranceForm.name ? 'pointer' : 'not-allowed',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Plus size={14} /> Add Bottle
+                      </button>
+                    </div>
+
+                    {hasBottles ? (
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                          <span style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>{bottlesForFragrance.length} bottle{bottlesForFragrance.length !== 1 ? 's' : ''} tracked</span>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4' }}>{totalFromBottles.toFixed(1)} oz total</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
+                          {bottlesForFragrance.map(bottle => {
+                            const ozRemaining = calculateNetOzRemaining(bottle) || 0;
+                            const percent = calculatePercentRemaining(bottle) || 0;
+                            return (
+                              <div key={bottle.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ width: '40px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${Math.min(100, percent)}%`, height: '100%', background: percent > 20 ? '#55efc4' : '#ff6b6b', borderRadius: '3px' }} />
+                                  </div>
+                                  <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{Math.round(percent)}%</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#fce4d6' }}>{ozRemaining.toFixed(1)} oz</span>
+                                  <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz} oz bottle)</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(85,239,196,0.1)', borderRadius: '6px', fontSize: '11px', color: '#55efc4', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Info size={12} /> Total On Hand syncs automatically from bottle weights
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.4)', marginBottom: '4px' }}>No bottles tracked yet</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.3)' }}>Add bottles to track inventory by weight</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                 <button onClick={() => setShowFragranceModal(false)} style={{ flex: 1, padding: '14px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
                 <button onClick={saveFragrance} style={{ ...btnPrimary, flex: 1, justifyContent: 'center' }}><Save size={18} /> {editingFragrance ? 'Save Changes' : 'Add Fragrance'}</button>
