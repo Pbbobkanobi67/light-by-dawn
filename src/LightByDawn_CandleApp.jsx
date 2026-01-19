@@ -84,6 +84,54 @@ const formatPercent = (num) => `${(num * 100).toFixed(1)}%`;
 const ozToMl = (oz) => (oz * 29.5735).toFixed(1);
 const ozToGrams = (oz) => (oz * 28.3495).toFixed(1);
 
+// Fragrance pricing helper functions
+const calculateTotalOz = (quantities) => {
+  if (!quantities) return 0;
+  return Object.entries(quantities).reduce((sum, [size, qty]) => sum + (parseFloat(size) * (qty || 0)), 0);
+};
+
+const calculateWeightedPricePerOz = (prices, quantities) => {
+  if (!prices || !quantities) return 0;
+  let totalCost = 0;
+  let totalOz = 0;
+  Object.keys(quantities).forEach(size => {
+    const qty = quantities[size] || 0;
+    const price = prices[size] || 0;
+    if (qty > 0 && price > 0) {
+      totalCost += price * qty;
+      totalOz += parseFloat(size) * qty;
+    }
+  });
+  return totalOz > 0 ? totalCost / totalOz : 0;
+};
+
+const calculateTotalInvestment = (prices, quantities) => {
+  if (!prices || !quantities) return 0;
+  return Object.keys(quantities).reduce((sum, size) => {
+    const qty = quantities[size] || 0;
+    const price = prices[size] || 0;
+    return sum + (price * qty);
+  }, 0);
+};
+
+// Get fragrance price per oz with fallback chain: weighted avg → 16oz price → legacy → default
+const getFragrancePricePerOz = (frag) => {
+  if (!frag) return 1.97;
+
+  // Try weighted average first
+  const weightedAvg = calculateWeightedPricePerOz(frag.prices, frag.quantities);
+  if (weightedAvg > 0) return weightedAvg;
+
+  // Fallback to 16oz price if available
+  if (frag.prices?.['16'] > 0) return frag.prices['16'] / 16;
+
+  // Fallback to legacy packageCost/packageSize
+  if (frag.packageCost && frag.packageSize) return frag.packageCost / frag.packageSize;
+
+  // Default fallback
+  return 1.97;
+};
+
 const categoryColors = {
   Wax: { bg: 'rgba(254,202,87,0.2)', text: '#feca57' },
   Container: { bg: 'rgba(116,185,255,0.2)', text: '#74b9ff' },
@@ -93,6 +141,46 @@ const categoryColors = {
   Unit: { bg: 'rgba(162,155,254,0.2)', text: '#a29bfe' },
   Fragrance: { bg: 'rgba(253,203,110,0.2)', text: '#fdcb6e' },
 };
+
+// ============ Fragrance Bottle Weight-Based Tracking Helpers ============
+const GRAMS_PER_OZ = 28.3495;
+
+// Calculate net oz remaining in a bottle based on weight
+const calculateNetOzRemaining = (bottle) => {
+  if (!bottle || bottle.currentWeightGrams === null || bottle.currentWeightGrams === undefined) return null;
+  // Use tare weight if known, otherwise estimate tare as 10% of gross weight
+  const tareWeight = bottle.tareWeightGrams ?? (bottle.grossWeightGrams ? bottle.grossWeightGrams * 0.1 : 0);
+  const netGrams = Math.max(0, bottle.currentWeightGrams - tareWeight);
+  return netGrams / GRAMS_PER_OZ;
+};
+
+// Calculate percentage of bottle remaining
+const calculatePercentRemaining = (bottle) => {
+  if (!bottle || !bottle.purchaseSizeOz) return null;
+  const ozRemaining = calculateNetOzRemaining(bottle);
+  if (ozRemaining === null) return null;
+  return Math.min(100, Math.max(0, (ozRemaining / bottle.purchaseSizeOz) * 100));
+};
+
+// Get bottle status based on percentage remaining
+const getBottleStatus = (bottle) => {
+  const percent = calculatePercentRemaining(bottle);
+  if (percent === null) return 'unknown';
+  if (percent <= 0) return 'empty';
+  if (percent < 20) return 'low';
+  return 'active';
+};
+
+// Get total oz available for a specific fragrance name across all bottles
+const getTotalOzForFragrance = (fragranceName, bottles) => {
+  if (!bottles || !fragranceName) return 0;
+  return bottles
+    .filter(b => b.fragranceName === fragranceName && b.status !== 'empty' && b.status !== 'archived')
+    .reduce((sum, b) => sum + (calculateNetOzRemaining(b) || 0), 0);
+};
+
+// Generate unique bottle ID
+const generateBottleId = () => `FB-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
 
 // Vendor link helper - renders vendor as clickable link if it's a URL
 const VendorLink = ({ vendor, style = {} }) => {
@@ -301,6 +389,38 @@ export default function CandleBusinessApp() {
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0, fillCapacity: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
+  // ============ Fragrance Bottles & Batch Wizard State ============
+  const [fragranceBottles, setFragranceBottles] = useState([]);
+  const [showBatchWizard, setShowBatchWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState({
+    selectedBottles: [], // Array of bottle IDs selected for this batch
+    recipe: null,
+    quantity: 12,
+    size: 9,
+    container: '',
+    wick: '',
+    label: '',
+    packaging: '',
+    foLoad: 0.10,
+    retailPrice: 24.00,
+  });
+  const [showAddBottleModal, setShowAddBottleModal] = useState(false);
+  const [quickAddCount, setQuickAddCount] = useState(0); // Track bottles added in current session
+  const [lastAddedBottles, setLastAddedBottles] = useState([]); // Recently added bottles for reference
+  const [bottleForm, setBottleForm] = useState({
+    fragranceId: '',
+    fragranceName: '',
+    vendor: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseSizeOz: 16,
+    purchasePriceTotal: 0,
+    grossWeightGrams: null,
+    tareWeightGrams: null,
+    currentWeightGrams: null,
+    notes: '',
+  });
+
   // Fragrance page state
   const [fragranceView, setFragranceView] = useState('grid'); // 'grid', 'list', 'table'
   const [showArchivedFragrances, setShowArchivedFragrances] = useState(false);
@@ -366,7 +486,7 @@ export default function CandleBusinessApp() {
 
   // Track loaded data counts to prevent syncing empty data over real data
   // CRITICAL: These refs must be declared BEFORE the load useEffect
-  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0, savedChats: 0 });
+  const loadedCountsRef = React.useRef({ materials: 0, fragrances: 0, recipes: 0, batchHistory: 0, batchList: 0, savedInstructions: 0, savedChats: 0, fragranceBottles: 0 });
   const syncEnabledRef = React.useRef(false);
 
   
@@ -377,7 +497,7 @@ export default function CandleBusinessApp() {
       try {
         setSyncStatus('syncing');
 
-        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes, savedChatsRes, settingsRes] = await Promise.all([
+        const [materialsRes, fragrancesRes, recipesRes, batchHistoryRes, batchListRes, savedInstructionsRes, savedChatsRes, fragranceBottlesRes, settingsRes] = await Promise.all([
           supabase.from('materials').select('*'),
           supabase.from('fragrances').select('*'),
           supabase.from('recipes').select('*'),
@@ -385,6 +505,7 @@ export default function CandleBusinessApp() {
           supabase.from('batch_list').select('*'),
           supabase.from('saved_instructions').select('*'),
           supabase.from('saved_chats').select('*'),
+          supabase.from('fragrance_bottles').select('*'),
           supabase.from('settings').select('*').eq('id', 'app_settings').single(),
         ]);
 
@@ -421,6 +542,10 @@ export default function CandleBusinessApp() {
         if (savedChatsRes.data !== null) {
           setSavedChats(toCamelCase(savedChatsRes.data));
           loadedCountsRef.current.savedChats = savedChatsRes.data.length;
+        }
+        if (fragranceBottlesRes.data !== null) {
+          setFragranceBottles(toCamelCase(fragranceBottlesRes.data));
+          loadedCountsRef.current.fragranceBottles = fragranceBottlesRes.data.length;
         }
 
         // Load settings (API key)
@@ -572,6 +697,11 @@ export default function CandleBusinessApp() {
     safeSyncToSupabase('saved_chats', savedChats, 'savedChats');
   }, [savedChats, safeSyncToSupabase]);
 
+  useEffect(() => {
+    saveToStorage('fragranceBottles', fragranceBottles);
+    safeSyncToSupabase('fragrance_bottles', fragranceBottles, 'fragranceBottles');
+  }, [fragranceBottles, safeSyncToSupabase]);
+
   // Auto-scroll conversation to bottom when new messages arrive
   useEffect(() => {
     if (conversationEndRef.current) {
@@ -697,12 +827,12 @@ export default function CandleBusinessApp() {
 
   const selectedRecipe = recipes.find(r => r.name === currentBatch.recipe);
 
-  // Auto-calculate avgFoCost from recipe components
+  // Auto-calculate avgFoCost from recipe components using weighted average pricing
   const calculatedAvgFoCost = useMemo(() => {
     if (!selectedRecipe?.components?.length) return 1.97; // default fallback
     const costs = selectedRecipe.components.map(c => {
       const frag = fragrances.find(f => f.name === c.fragrance);
-      const pricePerOz = frag?.prices?.['16'] ? frag.prices['16'] / 16 : 1.97;
+      const pricePerOz = getFragrancePricePerOz(frag);
       return pricePerOz * (c.percent / 100);
     });
     return Math.round(costs.reduce((sum, c) => sum + c, 0) * 100) / 100;
@@ -3551,6 +3681,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <p className="page-subtitle" style={{ color: 'rgba(252,228,214,0.6)' }}>Build multiple batches and export to shopping list</p>
                 </div>
                 <div className="btn-group page-header-controls" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={() => { setWizardStep(1); setWizardData({ selectedBottles: [], recipe: null, quantity: 12, size: 9, container: '', wick: '', label: '', packaging: '', foLoad: 0.10, retailPrice: 24.00 }); setShowBatchWizard(true); }} style={{ ...btnSecondary, color: '#ff9ff3', borderColor: 'rgba(255,159,243,0.3)' }}><Scale size={16} /> Batch Wizard</button>
                   <button onClick={resetCurrentBatch} style={btnSecondary}><RotateCcw size={16} /> Reset</button>
                   <button onClick={openLogBatchModal} style={{ ...btnSecondary, color: '#55efc4', borderColor: 'rgba(85,239,196,0.3)' }}><ClipboardList size={16} /> Log Batch</button>
                   <button onClick={() => {
@@ -3591,8 +3722,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             if (r.components?.length > 0) {
                               const costs = r.components.map(c => {
                                 const frag = fragrances.find(f => f.name === c.fragrance);
-                                // Use 16oz price as base cost per oz (most common bulk size)
-                                const pricePerOz = frag?.prices?.['16'] ? frag.prices['16'] / 16 : 1.97;
+                                const pricePerOz = getFragrancePricePerOz(frag);
                                 return pricePerOz * (c.percent / 100);
                               });
                               avgFoCost = Math.round(costs.reduce((sum, c) => sum + c, 0) * 100) / 100;
@@ -6609,26 +6739,103 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <input type="number" value={fragranceForm.maxLoad} onChange={e => setFragranceForm({ ...fragranceForm, maxLoad: parseInt(e.target.value) || 0 })} style={inputStyle} />
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Inventory by Size</label>
-                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>
-                    <span>Size</span><span>Qty</span><span>Cost</span><span>$/oz</span>
-                  </div>
-                  {[0.5, 1, 4, 8, 16].map(size => (
-                    <div key={size} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: '#fce4d6' }}>{size} oz</span>
-                      <input type="number" min="0" value={fragranceForm.quantities?.[size] || 0} onChange={e => setFragranceForm({ ...fragranceForm, quantities: { ...fragranceForm.quantities, [size]: parseInt(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px' }} placeholder="0" />
-                      <input type="number" step="0.01" min="0" value={fragranceForm.prices?.[size] || ''} onChange={e => setFragranceForm({ ...fragranceForm, prices: { ...fragranceForm.prices, [size]: parseFloat(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px' }} placeholder="$0.00" />
-                      <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>{fragranceForm.prices?.[size] > 0 ? `$${(fragranceForm.prices[size] / size).toFixed(2)}` : '-'}</span>
+              {/* Total On Hand with Unit Conversions */}
+              {(() => {
+                const totalOz = calculateTotalOz(fragranceForm.quantities);
+                const weightedAvg = calculateWeightedPricePerOz(fragranceForm.prices, fragranceForm.quantities);
+                const totalInvested = calculateTotalInvestment(fragranceForm.prices, fragranceForm.quantities);
+                return (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Total On Hand</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div style={{ background: 'rgba(85,239,196,0.15)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#55efc4' }}>{totalOz.toFixed(1)}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>oz</div>
+                      </div>
+                      <div style={{ background: 'rgba(116,185,255,0.15)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#74b9ff' }}>{ozToMl(totalOz)}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>ml</div>
+                      </div>
+                      <div style={{ background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#a29bfe' }}>{ozToGrams(totalOz)}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>grams</div>
+                      </div>
                     </div>
-                  ))}
-                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 60px', gap: '8px', padding: '8px 12px', borderTop: '1px solid rgba(255,159,107,0.3)', background: 'rgba(255,159,107,0.1)' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#feca57' }}>Total</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#55efc4' }}>{Object.entries(fragranceForm.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span>
-                    <span></span><span></span>
+                    {weightedAvg > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(254,202,87,0.1)', borderRadius: '6px', fontSize: '12px' }}>
+                        <span style={{ color: 'rgba(252,228,214,0.6)' }}>Weighted Avg: <span style={{ color: '#feca57', fontWeight: 600 }}>${weightedAvg.toFixed(2)}/oz</span></span>
+                        <span style={{ color: 'rgba(252,228,214,0.6)' }}>Invested: <span style={{ color: '#55efc4', fontWeight: 600 }}>${totalInvested.toFixed(2)}</span></span>
+                      </div>
+                    )}
                   </div>
+                );
+              })()}
+
+              {/* Price Chart */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Price Chart</label>
+                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>
+                    <span>Size</span><span>Qty</span><span>Price Paid</span><span>$/oz</span><span>Subtotal</span>
+                  </div>
+                  {[0.5, 1, 4, 8, 16].map(size => {
+                    const qty = fragranceForm.quantities?.[size] || 0;
+                    const price = fragranceForm.prices?.[size] || 0;
+                    const pricePerOz = price > 0 ? price / size : 0;
+                    const subtotal = price * qty;
+                    return (
+                      <div key={size} style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: '#fce4d6' }}>{size} oz</span>
+                        <input type="number" min="0" value={qty || ''} onChange={e => setFragranceForm({ ...fragranceForm, quantities: { ...fragranceForm.quantities, [size]: parseInt(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px', width: '100%' }} placeholder="0" />
+                        <input type="number" step="0.01" min="0" value={price || ''} onChange={e => setFragranceForm({ ...fragranceForm, prices: { ...fragranceForm.prices, [size]: parseFloat(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px', width: '100%' }} placeholder="$0.00" />
+                        <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>{pricePerOz > 0 ? `$${pricePerOz.toFixed(2)}` : '-'}</span>
+                        <span style={{ fontSize: '10px', color: subtotal > 0 ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{subtotal > 0 ? `$${subtotal.toFixed(2)}` : '-'}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Enhanced Footer */}
+                  {(() => {
+                    const totalOz = calculateTotalOz(fragranceForm.quantities);
+                    const weightedAvg = calculateWeightedPricePerOz(fragranceForm.prices, fragranceForm.quantities);
+                    const totalInvested = calculateTotalInvestment(fragranceForm.prices, fragranceForm.quantities);
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '8px 12px', borderTop: '1px solid rgba(255,159,107,0.3)', background: 'rgba(255,159,107,0.1)' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#feca57' }}>Total</span>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#55efc4' }}>{totalOz.toFixed(1)} oz</span>
+                        <span></span>
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: weightedAvg > 0 ? '#feca57' : 'rgba(252,228,214,0.4)' }}>{weightedAvg > 0 ? `$${weightedAvg.toFixed(2)}` : '-'}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: totalInvested > 0 ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{totalInvested > 0 ? `$${totalInvested.toFixed(2)}` : '-'}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
+                {/* Visit Vendor Button */}
+                {fragranceForm.vendor && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const vendor = fragranceForm.vendor.trim();
+                      if (vendor.startsWith('http://') || vendor.startsWith('https://')) {
+                        window.open(vendor, '_blank');
+                      } else {
+                        const vendorUrls = {
+                          'CandleScience': 'https://www.candlescience.com',
+                          'Amazon': 'https://www.amazon.com',
+                          'Lone Star': 'https://www.lonestarcandlesupply.com',
+                          'Plant Therapy': 'https://www.planttherapy.com',
+                          'Fillmore': 'https://www.fillmorecontainer.com',
+                          'Uline': 'https://www.uline.com',
+                          'Aztec': 'https://www.azteccandle.com',
+                        };
+                        const url = vendorUrls[vendor] || `https://www.google.com/search?q=${encodeURIComponent(vendor)}`;
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    style={{ marginTop: '8px', padding: '8px 16px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', color: '#74b9ff', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', justifyContent: 'center' }}
+                  >
+                    <ExternalLink size={14} /> Visit Vendor
+                  </button>
+                )}
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Reorder Point (total oz)</label>
@@ -7185,6 +7392,776 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, paddingTop: '8px', borderTop: '2px solid #1a0a1e' }}>
                 <span>Retail Value ({batchInstructions.quantity} × {formatCurrency(batchInstructions.retailPrice || 0)}):</span>
                 <span>{formatCurrency((batchInstructions.quantity || 0) * (batchInstructions.retailPrice || 0))}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Batch Wizard Modal ============ */}
+      {showBatchWizard && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: 'linear-gradient(180deg, #2d1b3d 0%, #1a0a1e 100%)', borderRadius: '20px', width: '100%', maxWidth: '900px', maxHeight: '90vh', overflow: 'hidden', border: '1px solid rgba(255,159,243,0.3)', display: 'flex', flexDirection: 'column' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,159,243,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #ff9ff3 0%, #a29bfe 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Scale size={24} color="#1a0a1e" />
+                </div>
+                <div>
+                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', background: 'linear-gradient(135deg, #ff9ff3 0%, #a29bfe 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Batch Wizard</h2>
+                  <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>Step {wizardStep} of 5 • Weight-based tracking</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBatchWizard(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer', padding: '8px' }}><X size={24} /></button>
+            </div>
+
+            {/* Progress Steps */}
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,159,243,0.1)', display: 'flex', gap: '8px', overflowX: 'auto' }}>
+              {[
+                { num: 1, label: 'Select Bottles', icon: Droplets },
+                { num: 2, label: 'Choose Recipe', icon: BookOpen },
+                { num: 3, label: 'Configure', icon: Settings },
+                { num: 4, label: 'Review', icon: ClipboardList },
+                { num: 5, label: 'Weigh-In', icon: Scale },
+              ].map(step => (
+                <div
+                  key={step.num}
+                  onClick={() => { if (step.num < wizardStep) setWizardStep(step.num); }}
+                  style={{
+                    flex: 1, minWidth: '80px', padding: '12px', borderRadius: '10px', textAlign: 'center',
+                    background: wizardStep === step.num ? 'linear-gradient(135deg, rgba(255,159,243,0.3) 0%, rgba(162,155,254,0.3) 100%)' : wizardStep > step.num ? 'rgba(85,239,196,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${wizardStep === step.num ? 'rgba(255,159,243,0.5)' : wizardStep > step.num ? 'rgba(85,239,196,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                    cursor: step.num < wizardStep ? 'pointer' : 'default',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <step.icon size={18} color={wizardStep === step.num ? '#ff9ff3' : wizardStep > step.num ? '#55efc4' : 'rgba(252,228,214,0.4)'} style={{ marginBottom: '4px' }} />
+                  <div style={{ fontSize: '11px', color: wizardStep === step.num ? '#ff9ff3' : wizardStep > step.num ? '#55efc4' : 'rgba(252,228,214,0.4)', fontWeight: wizardStep === step.num ? 600 : 400 }}>{step.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Step Content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              {/* Step 1: Select Bottles */}
+              {wizardStep === 1 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>Select Fragrance Bottles</h3>
+                      <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)' }}>Choose bottles from your inventory to use in this batch</p>
+                    </div>
+                    <button onClick={() => { setBottleForm({ fragranceId: '', fragranceName: '', vendor: '', purchaseDate: new Date().toISOString().split('T')[0], purchaseSizeOz: 16, purchasePriceTotal: 0, grossWeightGrams: null, tareWeightGrams: null, currentWeightGrams: null, notes: '' }); setShowAddBottleModal(true); }} style={{ ...btnPrimary, padding: '10px 16px', fontSize: '13px' }}><Plus size={16} /> Add Bottle</button>
+                  </div>
+
+                  {fragranceBottles.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px 24px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,159,243,0.3)' }}>
+                      <Droplets size={48} color="rgba(255,159,243,0.3)" style={{ marginBottom: '16px' }} />
+                      <h4 style={{ fontSize: '16px', marginBottom: '8px' }}>No Bottles Tracked Yet</h4>
+                      <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.5)', marginBottom: '16px' }}>Add fragrance bottles to track their weight and inventory</p>
+                      <button onClick={() => { setBottleForm({ fragranceId: '', fragranceName: '', vendor: '', purchaseDate: new Date().toISOString().split('T')[0], purchaseSizeOz: 16, purchasePriceTotal: 0, grossWeightGrams: null, tareWeightGrams: null, currentWeightGrams: null, notes: '' }); setShowAddBottleModal(true); }} style={btnPrimary}><Plus size={18} /> Add Your First Bottle</button>
+                    </div>
+                  ) : (
+                    <div>
+                      {/* Group bottles by fragrance name */}
+                      {Object.entries(fragranceBottles.reduce((acc, b) => {
+                        if (!acc[b.fragranceName]) acc[b.fragranceName] = [];
+                        acc[b.fragranceName].push(b);
+                        return acc;
+                      }, {})).sort((a, b) => a[0].localeCompare(b[0])).map(([fragranceName, bottles]) => (
+                        <div key={fragranceName} style={{ marginBottom: '20px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: '#feca57', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Droplets size={16} />
+                            {fragranceName}
+                            <span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(252,228,214,0.5)' }}>({getTotalOzForFragrance(fragranceName, fragranceBottles).toFixed(1)} oz available)</span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                            {bottles.filter(b => b.status !== 'archived').map(bottle => {
+                              const isSelected = wizardData.selectedBottles.includes(bottle.id);
+                              const percentRemaining = calculatePercentRemaining(bottle);
+                              const ozRemaining = calculateNetOzRemaining(bottle);
+                              const status = getBottleStatus(bottle);
+                              return (
+                                <div
+                                  key={bottle.id}
+                                  onClick={() => {
+                                    setWizardData(prev => ({
+                                      ...prev,
+                                      selectedBottles: isSelected
+                                        ? prev.selectedBottles.filter(id => id !== bottle.id)
+                                        : [...prev.selectedBottles, bottle.id]
+                                    }));
+                                  }}
+                                  style={{
+                                    padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                                    background: isSelected ? 'rgba(85,239,196,0.15)' : 'rgba(0,0,0,0.2)',
+                                    border: `2px solid ${isSelected ? '#55efc4' : status === 'low' ? 'rgba(255,159,107,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{bottle.purchaseSizeOz}oz Bottle</div>
+                                    <div style={{
+                                      width: '20px', height: '20px', borderRadius: '50%',
+                                      background: isSelected ? '#55efc4' : 'rgba(255,255,255,0.1)',
+                                      border: `2px solid ${isSelected ? '#55efc4' : 'rgba(255,255,255,0.2)'}`,
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                      {isSelected && <Check size={12} color="#1a0a1e" />}
+                                    </div>
+                                  </div>
+
+                                  {/* Progress bar */}
+                                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginBottom: '8px', overflow: 'hidden' }}>
+                                    <div style={{
+                                      height: '100%', borderRadius: '3px',
+                                      width: `${percentRemaining || 0}%`,
+                                      background: status === 'low' ? '#ff9f6b' : status === 'empty' ? '#ff6b6b' : '#55efc4'
+                                    }} />
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                    <span style={{ color: 'rgba(252,228,214,0.6)' }}>
+                                      {ozRemaining !== null ? `${ozRemaining.toFixed(1)} oz left` : 'Not weighed'}
+                                    </span>
+                                    <span style={{ color: status === 'low' ? '#ff9f6b' : status === 'empty' ? '#ff6b6b' : '#55efc4', fontWeight: 600 }}>
+                                      {percentRemaining !== null ? `${Math.round(percentRemaining)}%` : '-'}
+                                    </span>
+                                  </div>
+
+                                  {bottle.currentWeightGrams && (
+                                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '6px' }}>
+                                      Current: {bottle.currentWeightGrams}g
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {wizardData.selectedBottles.length > 0 && (
+                        <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '12px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4', marginBottom: '8px' }}>
+                            {wizardData.selectedBottles.length} bottle{wizardData.selectedBottles.length !== 1 ? 's' : ''} selected
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.7)' }}>
+                            Total available: {wizardData.selectedBottles.reduce((sum, id) => {
+                              const b = fragranceBottles.find(fb => fb.id === id);
+                              return sum + (calculateNetOzRemaining(b) || 0);
+                            }, 0).toFixed(2)} oz
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 2: Choose Recipe */}
+              {wizardStep === 2 && (
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>Select Recipe</h3>
+                  <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '20px' }}>Choose a recipe compatible with your selected bottles</p>
+
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {recipes.filter(r => !r.archived).sort((a, b) => a.name.localeCompare(b.name)).map(recipe => {
+                      // Check compatibility with selected bottles
+                      const selectedBottleFragrances = [...new Set(wizardData.selectedBottles.map(id => fragranceBottles.find(b => b.id === id)?.fragranceName).filter(Boolean))];
+                      const recipeFragrances = recipe.components?.map(c => c.fragrance) || [];
+                      const matchingFragrances = recipeFragrances.filter(f => selectedBottleFragrances.includes(f));
+                      const isFullyCompatible = recipeFragrances.every(f => selectedBottleFragrances.includes(f));
+                      const isPartialMatch = matchingFragrances.length > 0;
+                      const isSelected = wizardData.recipe === recipe.name;
+
+                      return (
+                        <div
+                          key={recipe.id}
+                          onClick={() => setWizardData({ ...wizardData, recipe: recipe.name, foLoad: (recipe.foLoad || 10) / 100 })}
+                          style={{
+                            padding: '16px', borderRadius: '12px', cursor: 'pointer',
+                            background: isSelected ? 'rgba(85,239,196,0.15)' : 'rgba(0,0,0,0.2)',
+                            border: `2px solid ${isSelected ? '#55efc4' : isFullyCompatible ? 'rgba(85,239,196,0.3)' : isPartialMatch ? 'rgba(255,159,107,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600 }}>{recipe.name}</span>
+                                {isFullyCompatible && wizardData.selectedBottles.length > 0 && (
+                                  <span style={{ padding: '2px 8px', background: 'rgba(85,239,196,0.2)', borderRadius: '10px', fontSize: '10px', color: '#55efc4', fontWeight: 600 }}>COMPATIBLE</span>
+                                )}
+                                {isPartialMatch && !isFullyCompatible && wizardData.selectedBottles.length > 0 && (
+                                  <span style={{ padding: '2px 8px', background: 'rgba(255,159,107,0.2)', borderRadius: '10px', fontSize: '10px', color: '#ff9f6b', fontWeight: 600 }}>PARTIAL</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#feca57', marginBottom: '8px' }}>{recipe.vibe}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {recipe.components?.map((c, i) => {
+                                  const hasBottle = selectedBottleFragrances.includes(c.fragrance);
+                                  return (
+                                    <span key={i} style={{
+                                      padding: '3px 8px', borderRadius: '4px', fontSize: '11px',
+                                      background: hasBottle ? 'rgba(85,239,196,0.2)' : 'rgba(255,159,107,0.15)',
+                                      color: hasBottle ? '#55efc4' : 'rgba(252,228,214,0.7)'
+                                    }}>
+                                      {c.fragrance} {c.percent}%
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div style={{
+                              width: '24px', height: '24px', borderRadius: '50%',
+                              background: isSelected ? '#55efc4' : 'rgba(255,255,255,0.1)',
+                              border: `2px solid ${isSelected ? '#55efc4' : 'rgba(255,255,255,0.2)'}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: '12px'
+                            }}>
+                              {isSelected && <Check size={14} color="#1a0a1e" />}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Configure Batch */}
+              {wizardStep === 3 && (
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>Configure Batch</h3>
+                  <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '20px' }}>Set quantity, size, and materials</p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Quantity</label>
+                      <input type="number" value={wizardData.quantity} onChange={e => setWizardData({ ...wizardData, quantity: parseInt(e.target.value) || 1 })} min={1} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Size (oz)</label>
+                      <input type="number" value={wizardData.size} onChange={e => setWizardData({ ...wizardData, size: parseFloat(e.target.value) || 1 })} min={1} step={0.5} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Container</label>
+                      <select value={wizardData.container} onChange={e => setWizardData({ ...wizardData, container: e.target.value })} style={inputStyle}>
+                        <option value="">Select container...</option>
+                        {materials.filter(m => m.category === 'Container').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Wick</label>
+                      <select value={wizardData.wick} onChange={e => setWizardData({ ...wizardData, wick: e.target.value })} style={inputStyle}>
+                        <option value="">Select wick...</option>
+                        {materials.filter(m => m.category === 'Wick').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                      {/* Wick suggestion based on container */}
+                      {wizardData.container && (
+                        <div style={{ fontSize: '11px', color: '#a29bfe', marginTop: '4px' }}>
+                          💡 Tip: {wizardData.size <= 4 ? 'CD-10' : wizardData.size <= 8 ? 'CD-14' : 'CD-18'} recommended for {wizardData.size}oz
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Label</label>
+                      <select value={wizardData.label} onChange={e => setWizardData({ ...wizardData, label: e.target.value })} style={inputStyle}>
+                        <option value="">No label</option>
+                        <option value="standard-vinyl">Standard Vinyl</option>
+                        {materials.filter(m => m.category === 'Label').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Packaging</label>
+                      <select value={wizardData.packaging} onChange={e => setWizardData({ ...wizardData, packaging: e.target.value })} style={inputStyle}>
+                        <option value="">No packaging</option>
+                        {materials.filter(m => m.category === 'Packaging').map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>FO Load %</label>
+                      <input type="number" value={(wizardData.foLoad * 100).toFixed(0)} onChange={e => setWizardData({ ...wizardData, foLoad: (parseFloat(e.target.value) || 10) / 100 })} min={1} max={15} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Retail Price ($)</label>
+                      <input type="number" value={wizardData.retailPrice} onChange={e => setWizardData({ ...wizardData, retailPrice: parseFloat(e.target.value) || 0 })} min={0} step={0.50} style={inputStyle} />
+                    </div>
+                  </div>
+
+                  {/* Materials needed preview */}
+                  <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Materials Needed</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                      <div style={{ padding: '10px', background: 'rgba(254,202,87,0.1)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#feca57', textTransform: 'uppercase' }}>Wax</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>{(wizardData.size * (1 - wizardData.foLoad) * wizardData.quantity).toFixed(1)} oz</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{((wizardData.size * (1 - wizardData.foLoad) * wizardData.quantity) / 16).toFixed(2)} lbs</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(162,155,254,0.1)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#a29bfe', textTransform: 'uppercase' }}>Fragrance</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>{(wizardData.size * wizardData.foLoad * wizardData.quantity).toFixed(1)} oz</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{(wizardData.foLoad * 100).toFixed(0)}% load</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(116,185,255,0.1)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#74b9ff', textTransform: 'uppercase' }}>Containers</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>{wizardData.quantity}</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(255,159,243,0.1)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#ff9ff3', textTransform: 'uppercase' }}>Wicks</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>{wizardData.quantity}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Review */}
+              {wizardStep === 4 && (
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>Review Batch</h3>
+                  <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '20px' }}>Confirm everything looks correct before starting</p>
+
+                  {/* Summary Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+                    <div style={{ padding: '16px', background: 'rgba(255,159,243,0.1)', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#ff9ff3' }}>{wizardData.quantity}</div>
+                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>Candles</div>
+                    </div>
+                    <div style={{ padding: '16px', background: 'rgba(162,155,254,0.1)', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#a29bfe' }}>{wizardData.size}oz</div>
+                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>Each</div>
+                    </div>
+                    <div style={{ padding: '16px', background: 'rgba(85,239,196,0.1)', borderRadius: '12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#55efc4' }}>{formatCurrency(wizardData.retailPrice * wizardData.quantity)}</div>
+                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)' }}>Retail Value</div>
+                    </div>
+                  </div>
+
+                  {/* Recipe */}
+                  <div style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Recipe</div>
+                    <div style={{ fontSize: '18px', fontWeight: 600, color: '#feca57' }}>{wizardData.recipe || 'Not selected'}</div>
+                    {wizardData.recipe && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                        {recipes.find(r => r.name === wizardData.recipe)?.components?.map((c, i) => (
+                          <span key={i} style={{ padding: '4px 10px', background: 'rgba(255,159,107,0.15)', borderRadius: '6px', fontSize: '12px' }}>{c.fragrance} {c.percent}%</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Materials */}
+                  <div style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '12px' }}>Materials</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '13px' }}>
+                      <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Container:</span> <span style={{ fontWeight: 500 }}>{wizardData.container || 'Not selected'}</span></div>
+                      <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Wick:</span> <span style={{ fontWeight: 500 }}>{wizardData.wick || 'Not selected'}</span></div>
+                      <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Label:</span> <span style={{ fontWeight: 500 }}>{wizardData.label || 'None'}</span></div>
+                      <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Packaging:</span> <span style={{ fontWeight: 500 }}>{wizardData.packaging || 'None'}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Selected Bottles */}
+                  {wizardData.selectedBottles.length > 0 && (
+                    <div style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '12px' }}>Selected Bottles ({wizardData.selectedBottles.length})</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {wizardData.selectedBottles.map(id => {
+                          const bottle = fragranceBottles.find(b => b.id === id);
+                          if (!bottle) return null;
+                          return (
+                            <div key={id} style={{ padding: '8px 12px', background: 'rgba(85,239,196,0.15)', borderRadius: '8px', fontSize: '12px' }}>
+                              <span style={{ fontWeight: 500 }}>{bottle.fragranceName}</span>
+                              <span style={{ color: 'rgba(252,228,214,0.5)', marginLeft: '8px' }}>{calculateNetOzRemaining(bottle)?.toFixed(1) || '?'} oz</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 5: Post-Batch Weigh-In */}
+              {wizardStep === 5 && (
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '4px' }}>Post-Batch Weigh-In</h3>
+                  <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '20px' }}>Weigh your bottles after the batch to update inventory</p>
+
+                  {wizardData.selectedBottles.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                      <Scale size={48} color="rgba(255,159,243,0.3)" style={{ marginBottom: '16px' }} />
+                      <p style={{ color: 'rgba(252,228,214,0.6)' }}>No bottles were selected for this batch</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {wizardData.selectedBottles.map(id => {
+                        const bottle = fragranceBottles.find(b => b.id === id);
+                        if (!bottle) return null;
+                        const ozBefore = calculateNetOzRemaining(bottle);
+                        const recipe = recipes.find(r => r.name === wizardData.recipe);
+                        const component = recipe?.components?.find(c => c.fragrance === bottle.fragranceName);
+                        const expectedUsage = component ? (wizardData.size * wizardData.foLoad * wizardData.quantity * (component.percent / 100)) : 0;
+
+                        return (
+                          <div key={id} style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                              <div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{bottle.fragranceName}</div>
+                                <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>{bottle.purchaseSizeOz}oz bottle</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>Before: {ozBefore?.toFixed(1) || '?'} oz</div>
+                                <div style={{ fontSize: '12px', color: '#ff9f6b' }}>Expected use: ~{expectedUsage.toFixed(2)} oz</div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>New Weight (grams)</label>
+                                <input
+                                  type="number"
+                                  value={wizardData[`newWeight_${id}`] || ''}
+                                  onChange={e => setWizardData({ ...wizardData, [`newWeight_${id}`]: parseFloat(e.target.value) || null })}
+                                  placeholder="Enter current weight"
+                                  style={{ ...inputStyle, padding: '10px' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '20px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={wizardData[`empty_${id}`] || false}
+                                    onChange={e => setWizardData({ ...wizardData, [`empty_${id}`]: e.target.checked })}
+                                    style={{ width: '18px', height: '18px', accentColor: '#ff6b6b' }}
+                                  />
+                                  <span style={{ fontSize: '12px', color: '#ff6b6b' }}>Mark as empty</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {wizardData[`empty_${id}`] && (
+                              <div style={{ marginTop: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Tare Weight (empty bottle in grams)</label>
+                                <input
+                                  type="number"
+                                  value={wizardData[`tare_${id}`] || ''}
+                                  onChange={e => setWizardData({ ...wizardData, [`tare_${id}`]: parseFloat(e.target.value) || null })}
+                                  placeholder="Weigh empty bottle for accurate tracking"
+                                  style={{ ...inputStyle, padding: '10px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,159,243,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => wizardStep === 1 ? setShowBatchWizard(false) : setWizardStep(wizardStep - 1)}
+                style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}
+              >
+                {wizardStep === 1 ? 'Cancel' : 'Back'}
+              </button>
+
+              {wizardStep < 5 ? (
+                <button
+                  onClick={() => setWizardStep(wizardStep + 1)}
+                  disabled={
+                    (wizardStep === 2 && !wizardData.recipe) ||
+                    (wizardStep === 3 && (!wizardData.quantity || !wizardData.size))
+                  }
+                  style={{
+                    ...btnPrimary,
+                    opacity: ((wizardStep === 2 && !wizardData.recipe) || (wizardStep === 3 && (!wizardData.quantity || !wizardData.size))) ? 0.5 : 1,
+                    cursor: ((wizardStep === 2 && !wizardData.recipe) || (wizardStep === 3 && (!wizardData.quantity || !wizardData.size))) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {wizardStep === 4 ? 'Start Batch' : 'Next'} <ChevronRight size={18} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    // Update bottle weights
+                    setFragranceBottles(prev => prev.map(bottle => {
+                      if (wizardData.selectedBottles.includes(bottle.id)) {
+                        const newWeight = wizardData[`newWeight_${bottle.id}`];
+                        const isEmpty = wizardData[`empty_${bottle.id}`];
+                        const tareWeight = wizardData[`tare_${bottle.id}`];
+
+                        const recipe = recipes.find(r => r.name === wizardData.recipe);
+                        const component = recipe?.components?.find(c => c.fragrance === bottle.fragranceName);
+                        const ozUsed = component ? (wizardData.size * wizardData.foLoad * wizardData.quantity * (component.percent / 100)) : 0;
+
+                        return {
+                          ...bottle,
+                          currentWeightGrams: newWeight || bottle.currentWeightGrams,
+                          tareWeightGrams: isEmpty && tareWeight ? tareWeight : bottle.tareWeightGrams,
+                          status: isEmpty ? 'empty' : getBottleStatus({ ...bottle, currentWeightGrams: newWeight || bottle.currentWeightGrams }),
+                          lastWeighedAt: new Date().toISOString(),
+                          usageHistory: [...(bottle.usageHistory || []), {
+                            date: new Date().toISOString(),
+                            batchId: `BATCH-${Date.now()}`,
+                            ozUsed,
+                            weightBefore: bottle.currentWeightGrams,
+                            weightAfter: newWeight || bottle.currentWeightGrams,
+                            recipe: wizardData.recipe,
+                            quantity: wizardData.quantity,
+                          }]
+                        };
+                      }
+                      return bottle;
+                    }));
+
+                    // Log the batch to history
+                    const recipe = recipes.find(r => r.name === wizardData.recipe);
+                    const newBatch = {
+                      id: `BATCH-${Date.now()}`,
+                      date: new Date().toISOString().split('T')[0],
+                      recipe: wizardData.recipe,
+                      quantity: wizardData.quantity,
+                      size: wizardData.size,
+                      container: wizardData.container,
+                      wick: wizardData.wick,
+                      label: wizardData.label,
+                      packaging: wizardData.packaging,
+                      foLoad: wizardData.foLoad,
+                      retailPrice: wizardData.retailPrice,
+                      notes: `Batch Wizard - Bottles used: ${wizardData.selectedBottles.map(id => fragranceBottles.find(b => b.id === id)?.fragranceName).filter(Boolean).join(', ')}`,
+                      method: 'wizard',
+                    };
+                    setBatchHistory(prev => [newBatch, ...prev]);
+
+                    // Deduct materials
+                    if (recipe) {
+                      deductBatchMaterials({ recipe: wizardData.recipe, quantity: wizardData.quantity, size: wizardData.size });
+                    }
+
+                    // Close wizard
+                    setShowBatchWizard(false);
+                    setWizardStep(1);
+                  }}
+                  style={btnPrimary}
+                >
+                  <CheckCircle size={18} /> Complete Batch
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Bottle Modal - with Quick Add for bulk entry */}
+      {showAddBottleModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px' }}>
+          <div style={{ background: 'linear-gradient(180deg, #2d1b3d 0%, #1a0a1e 100%)', borderRadius: '20px', width: '100%', maxWidth: '550px', maxHeight: '90vh', overflow: 'auto', border: '1px solid rgba(255,159,243,0.3)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,159,243,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '22px', background: 'linear-gradient(135deg, #ff9ff3 0%, #a29bfe 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Add Fragrance Bottle</h2>
+                {quickAddCount > 0 && (
+                  <div style={{ fontSize: '12px', color: '#55efc4', marginTop: '4px' }}>
+                    ✓ {quickAddCount} bottle{quickAddCount !== 1 ? 's' : ''} added this session
+                  </div>
+                )}
+              </div>
+              <button onClick={() => { setShowAddBottleModal(false); setQuickAddCount(0); setLastAddedBottles([]); }} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+
+            {/* Recently Added - shown during quick add session */}
+            {lastAddedBottles.length > 0 && (
+              <div style={{ padding: '12px 24px', background: 'rgba(85,239,196,0.1)', borderBottom: '1px solid rgba(85,239,196,0.2)' }}>
+                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Recently Added</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {lastAddedBottles.slice(-5).map((b, i) => (
+                    <span key={i} style={{ padding: '4px 10px', background: 'rgba(85,239,196,0.2)', borderRadius: '6px', fontSize: '11px', color: '#55efc4' }}>
+                      {b.fragranceName} ({b.currentWeightGrams}g)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Fragrance Selection */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Fragrance *</label>
+                  <select
+                    value={bottleForm.fragranceId}
+                    onChange={e => {
+                      const frag = fragrances.find(f => f.id === e.target.value);
+                      setBottleForm({
+                        ...bottleForm,
+                        fragranceId: e.target.value,
+                        fragranceName: frag?.name || '',
+                        vendor: frag?.vendor || '',
+                        purchaseSizeOz: frag?.packageSize || 16,
+                        purchasePriceTotal: frag?.packageCost || 0,
+                      });
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="">Select fragrance...</option>
+                    {[...fragrances].sort((a, b) => a.name.localeCompare(b.name)).map(f => (
+                      <option key={f.id} value={f.id}>{f.name} ({f.type})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Streamlined row for size and weight - the key fields for quick add */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Size (oz)</label>
+                    <input type="number" value={bottleForm.purchaseSizeOz} onChange={e => setBottleForm({ ...bottleForm, purchaseSizeOz: parseFloat(e.target.value) || 0 })} style={{ ...inputStyle, padding: '10px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Price ($)</label>
+                    <input type="number" value={bottleForm.purchasePriceTotal} onChange={e => setBottleForm({ ...bottleForm, purchasePriceTotal: parseFloat(e.target.value) || 0 })} step={0.01} style={{ ...inputStyle, padding: '10px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#a29bfe', marginBottom: '4px', fontWeight: 600 }}>Weight (g) *</label>
+                    <input
+                      type="number"
+                      value={bottleForm.currentWeightGrams || ''}
+                      onChange={e => {
+                        const weight = parseFloat(e.target.value) || null;
+                        setBottleForm({ ...bottleForm, grossWeightGrams: weight, currentWeightGrams: weight });
+                      }}
+                      placeholder="Scale reading"
+                      style={{ ...inputStyle, padding: '10px', borderColor: 'rgba(162,155,254,0.4)' }}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Collapsible extra fields */}
+                <details style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '12px' }}>
+                  <summary style={{ cursor: 'pointer', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '12px' }}>More options (vendor, date, notes)</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Vendor URL</label>
+                      <input
+                        type="text"
+                        value={bottleForm.vendor}
+                        onChange={e => setBottleForm({ ...bottleForm, vendor: e.target.value })}
+                        onBlur={async (e) => {
+                          const url = e.target.value;
+                          if (url && url.startsWith('http')) {
+                            const shortened = await shortenUrl(url);
+                            if (shortened !== url) {
+                              setBottleForm(prev => ({ ...prev, vendor: shortened }));
+                            }
+                          }
+                        }}
+                        placeholder="URL (will auto-shorten)"
+                        style={{ ...inputStyle, padding: '10px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Purchase Date</label>
+                      <input type="date" value={bottleForm.purchaseDate} onChange={e => setBottleForm({ ...bottleForm, purchaseDate: e.target.value })} style={{ ...inputStyle, padding: '10px' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '4px' }}>Notes</label>
+                      <textarea value={bottleForm.notes} onChange={e => setBottleForm({ ...bottleForm, notes: e.target.value })} rows={2} placeholder="Optional notes..." style={{ ...inputStyle, padding: '10px', resize: 'vertical' }} />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Estimated oz remaining preview */}
+                {bottleForm.currentWeightGrams && bottleForm.purchaseSizeOz && (
+                  <div style={{ padding: '12px', background: 'rgba(85,239,196,0.1)', borderRadius: '8px', border: '1px solid rgba(85,239,196,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>Estimated remaining:</span>
+                      <span style={{ fontSize: '16px', fontWeight: 600, color: '#55efc4' }}>
+                        ~{((bottleForm.currentWeightGrams * 0.9) / GRAMS_PER_OZ).toFixed(1)} oz
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px' }}>
+                      Based on estimated 10% tare weight
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+                <button onClick={() => { setShowAddBottleModal(false); setQuickAddCount(0); setLastAddedBottles([]); }} style={{ padding: '14px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>
+                  {quickAddCount > 0 ? 'Done' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!bottleForm.fragranceName) return;
+                    const newBottle = {
+                      id: generateBottleId(),
+                      fragranceId: bottleForm.fragranceId,
+                      fragranceName: bottleForm.fragranceName,
+                      vendor: bottleForm.vendor,
+                      purchaseDate: bottleForm.purchaseDate,
+                      purchaseSizeOz: bottleForm.purchaseSizeOz,
+                      purchasePriceTotal: bottleForm.purchasePriceTotal,
+                      grossWeightGrams: bottleForm.grossWeightGrams,
+                      tareWeightGrams: bottleForm.tareWeightGrams,
+                      currentWeightGrams: bottleForm.currentWeightGrams,
+                      status: 'active',
+                      lastWeighedAt: bottleForm.currentWeightGrams ? new Date().toISOString() : null,
+                      notes: bottleForm.notes,
+                      usageHistory: [],
+                      createdAt: new Date().toISOString(),
+                    };
+                    setFragranceBottles(prev => [...prev, newBottle]);
+                    setQuickAddCount(prev => prev + 1);
+                    setLastAddedBottles(prev => [...prev, newBottle]);
+                    // Reset form but keep fragrance selected for adding multiple of same type
+                    setBottleForm(prev => ({
+                      ...prev,
+                      grossWeightGrams: null,
+                      currentWeightGrams: null,
+                      notes: '',
+                    }));
+                  }}
+                  disabled={!bottleForm.fragranceName || !bottleForm.currentWeightGrams}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 20px', background: 'linear-gradient(135deg, #55efc4 0%, #00b894 100%)', border: 'none', borderRadius: '10px', color: '#1a0a1e', fontWeight: 600, cursor: 'pointer', fontSize: '14px', opacity: (!bottleForm.fragranceName || !bottleForm.currentWeightGrams) ? 0.5 : 1 }}
+                >
+                  <Zap size={18} /> Quick Add
+                </button>
+                <button
+                  onClick={() => {
+                    if (!bottleForm.fragranceName) return;
+                    const newBottle = {
+                      id: generateBottleId(),
+                      fragranceId: bottleForm.fragranceId,
+                      fragranceName: bottleForm.fragranceName,
+                      vendor: bottleForm.vendor,
+                      purchaseDate: bottleForm.purchaseDate,
+                      purchaseSizeOz: bottleForm.purchaseSizeOz,
+                      purchasePriceTotal: bottleForm.purchasePriceTotal,
+                      grossWeightGrams: bottleForm.grossWeightGrams,
+                      tareWeightGrams: bottleForm.tareWeightGrams,
+                      currentWeightGrams: bottleForm.currentWeightGrams,
+                      status: 'active',
+                      lastWeighedAt: bottleForm.currentWeightGrams ? new Date().toISOString() : null,
+                      notes: bottleForm.notes,
+                      usageHistory: [],
+                      createdAt: new Date().toISOString(),
+                    };
+                    setFragranceBottles(prev => [...prev, newBottle]);
+                    setShowAddBottleModal(false);
+                    setQuickAddCount(0);
+                    setLastAddedBottles([]);
+                  }}
+                  disabled={!bottleForm.fragranceName}
+                  style={{ ...btnPrimary, padding: '14px 20px', opacity: !bottleForm.fragranceName ? 0.5 : 1 }}
+                >
+                  <Plus size={18} /> Add & Close
+                </button>
               </div>
             </div>
           </div>
