@@ -6825,75 +6825,70 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <input type="number" value={fragranceForm.maxLoad} onChange={e => setFragranceForm({ ...fragranceForm, maxLoad: parseInt(e.target.value) || 0 })} style={inputStyle} />
                 </div>
               </div>
-              {/* Total On Hand with Unit Conversions */}
+              {/* Total On Hand - calculated from tracked bottles */}
               {(() => {
-                const totalOz = calculateTotalOz(fragranceForm.quantities);
+                // Get bottle-based inventory (source of truth)
+                const bottlesForThisFragrance = fragranceBottles.filter(b =>
+                  b.fragranceName === fragranceForm.name && b.status !== 'archived'
+                );
+                const totalOzFromBottles = getTotalOzForFragrance(fragranceForm.name, fragranceBottles);
+                const hasBottles = bottlesForThisFragrance.length > 0;
+
+                // Pricing info from price chart
                 const weightedAvg = calculateWeightedPricePerOz(fragranceForm.prices, fragranceForm.quantities);
-                const totalInvested = calculateTotalInvestment(fragranceForm.prices, fragranceForm.quantities);
+
                 return (
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Total On Hand</label>
+                    <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>
+                      Total On Hand {hasBottles && <span style={{ fontSize: '10px', color: '#55efc4' }}>(from {bottlesForThisFragrance.length} bottle{bottlesForThisFragrance.length !== 1 ? 's' : ''})</span>}
+                    </label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                      <div style={{ background: 'rgba(85,239,196,0.15)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#55efc4' }}>{totalOz.toFixed(1)}</div>
+                      <div style={{ background: hasBottles ? 'rgba(85,239,196,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${hasBottles ? 'rgba(85,239,196,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: hasBottles ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{totalOzFromBottles.toFixed(1)}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>oz</div>
                       </div>
-                      <div style={{ background: 'rgba(116,185,255,0.15)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#74b9ff' }}>{ozToMl(totalOz)}</div>
+                      <div style={{ background: hasBottles ? 'rgba(116,185,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${hasBottles ? 'rgba(116,185,255,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: hasBottles ? '#74b9ff' : 'rgba(252,228,214,0.4)' }}>{ozToMl(totalOzFromBottles)}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>ml</div>
                       </div>
-                      <div style={{ background: 'rgba(162,155,254,0.15)', border: '1px solid rgba(162,155,254,0.3)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#a29bfe' }}>{ozToGrams(totalOz)}</div>
+                      <div style={{ background: hasBottles ? 'rgba(162,155,254,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${hasBottles ? 'rgba(162,155,254,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: hasBottles ? '#a29bfe' : 'rgba(252,228,214,0.4)' }}>{ozToGrams(totalOzFromBottles)}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>grams</div>
                       </div>
                     </div>
+                    {!hasBottles && (
+                      <div style={{ padding: '8px 12px', background: 'rgba(255,159,107,0.1)', borderRadius: '6px', fontSize: '11px', color: '#ff9f6b', textAlign: 'center' }}>
+                        Add bottles below to track inventory by weight
+                      </div>
+                    )}
                     {weightedAvg > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(254,202,87,0.1)', borderRadius: '6px', fontSize: '12px' }}>
-                        <span style={{ color: 'rgba(252,228,214,0.6)' }}>Weighted Avg: <span style={{ color: '#feca57', fontWeight: 600 }}>${weightedAvg.toFixed(2)}/oz</span></span>
-                        <span style={{ color: 'rgba(252,228,214,0.6)' }}>Invested: <span style={{ color: '#55efc4', fontWeight: 600 }}>${totalInvested.toFixed(2)}</span></span>
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 12px', background: 'rgba(254,202,87,0.1)', borderRadius: '6px', fontSize: '12px', marginTop: hasBottles ? '0' : '8px' }}>
+                        <span style={{ color: 'rgba(252,228,214,0.6)' }}>Avg Price: <span style={{ color: '#feca57', fontWeight: 600 }}>${weightedAvg.toFixed(2)}/oz</span></span>
                       </div>
                     )}
                   </div>
                 );
               })()}
 
-              {/* Price Chart */}
+              {/* Price Chart - for pricing reference only */}
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>Price Chart</label>
+                <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '4px' }}>Price Reference</label>
+                <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginBottom: '8px' }}>Record prices for cost calculations (inventory tracked via bottles below)</div>
                 <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>
-                    <span>Size</span><span>Qty</span><span>Price Paid</span><span>$/oz</span><span>Subtotal</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 90px 70px', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>
+                    <span>Size</span><span>Price per Bottle</span><span>$/oz</span>
                   </div>
                   {[0.5, 1, 4, 8, 16].map(size => {
-                    const qty = fragranceForm.quantities?.[size] || 0;
                     const price = fragranceForm.prices?.[size] || 0;
                     const pricePerOz = price > 0 ? price / size : 0;
-                    const subtotal = price * qty;
                     return (
-                      <div key={size} style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                      <div key={size} style={{ display: 'grid', gridTemplateColumns: '60px 90px 70px', gap: '6px', padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
                         <span style={{ fontSize: '12px', color: '#fce4d6' }}>{size} oz</span>
-                        <input type="number" min="0" value={qty || ''} onChange={e => setFragranceForm({ ...fragranceForm, quantities: { ...fragranceForm.quantities, [size]: parseInt(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px', width: '100%' }} placeholder="0" />
                         <input type="number" step="0.01" min="0" value={price || ''} onChange={e => setFragranceForm({ ...fragranceForm, prices: { ...fragranceForm.prices, [size]: parseFloat(e.target.value) || 0 } })} style={{ ...inputStyle, padding: '4px 6px', fontSize: '12px', width: '100%' }} placeholder="$0.00" />
-                        <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)' }}>{pricePerOz > 0 ? `$${pricePerOz.toFixed(2)}` : '-'}</span>
-                        <span style={{ fontSize: '10px', color: subtotal > 0 ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{subtotal > 0 ? `$${subtotal.toFixed(2)}` : '-'}</span>
+                        <span style={{ fontSize: '11px', color: pricePerOz > 0 ? '#feca57' : 'rgba(252,228,214,0.4)' }}>{pricePerOz > 0 ? `$${pricePerOz.toFixed(2)}` : '-'}</span>
                       </div>
                     );
                   })}
-                  {/* Enhanced Footer */}
-                  {(() => {
-                    const totalOz = calculateTotalOz(fragranceForm.quantities);
-                    const weightedAvg = calculateWeightedPricePerOz(fragranceForm.prices, fragranceForm.quantities);
-                    const totalInvested = calculateTotalInvestment(fragranceForm.prices, fragranceForm.quantities);
-                    return (
-                      <div style={{ display: 'grid', gridTemplateColumns: '55px 55px 70px 55px 70px', gap: '6px', padding: '8px 12px', borderTop: '1px solid rgba(255,159,107,0.3)', background: 'rgba(255,159,107,0.1)' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#feca57' }}>Total</span>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#55efc4' }}>{totalOz.toFixed(1)} oz</span>
-                        <span></span>
-                        <span style={{ fontSize: '10px', fontWeight: 600, color: weightedAvg > 0 ? '#feca57' : 'rgba(252,228,214,0.4)' }}>{weightedAvg > 0 ? `$${weightedAvg.toFixed(2)}` : '-'}</span>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: totalInvested > 0 ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{totalInvested > 0 ? `$${totalInvested.toFixed(2)}` : '-'}</span>
-                      </div>
-                    );
-                  })()}
                 </div>
                 {/* Visit Vendor Button */}
                 {fragranceForm.vendor && (
@@ -6995,6 +6990,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                           {bottlesForFragrance.map(bottle => {
                             const ozRemaining = calculateNetOzRemaining(bottle) || 0;
                             const percent = calculatePercentRemaining(bottle) || 0;
+                            const hasTare = bottle.tareWeightGrams !== null && bottle.tareWeightGrams !== undefined;
                             return (
                               <div key={bottle.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -7002,12 +6998,32 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                     <div style={{ width: `${Math.min(100, percent)}%`, height: '100%', background: percent > 20 ? '#55efc4' : '#ff6b6b', borderRadius: '3px' }} />
                                   </div>
                                   <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{Math.round(percent)}%</span>
+                                  {hasTare && <span style={{ fontSize: '9px', color: '#55efc4' }} title={`Tare: ${bottle.tareWeightGrams}g`}>✓</span>}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <div style={{ textAlign: 'right' }}>
                                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#fce4d6' }}>{ozRemaining.toFixed(1)} oz</span>
-                                    <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz} oz bottle)</span>
+                                    <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz}oz)</span>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const tareWeight = prompt(
+                                        `Enter empty bottle weight in grams for this ${bottle.purchaseSizeOz}oz bottle:\n\n(Weigh the empty bottle after finishing it)`,
+                                        bottle.tareWeightGrams || ''
+                                      );
+                                      if (tareWeight !== null) {
+                                        const tare = parseFloat(tareWeight) || 0;
+                                        setFragranceBottles(prev => prev.map(b =>
+                                          b.id === bottle.id ? { ...b, tareWeightGrams: tare } : b
+                                        ));
+                                      }
+                                    }}
+                                    style={{ padding: '4px', background: hasTare ? 'rgba(85,239,196,0.15)' : 'rgba(254,202,87,0.15)', border: `1px solid ${hasTare ? 'rgba(85,239,196,0.3)' : 'rgba(254,202,87,0.3)'}`, borderRadius: '4px', color: hasTare ? '#55efc4' : '#feca57', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    title={hasTare ? `Empty weight: ${bottle.tareWeightGrams}g (click to edit)` : 'Set empty bottle weight'}
+                                  >
+                                    <Scale size={12} />
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => deleteBottle(bottle.id)}
