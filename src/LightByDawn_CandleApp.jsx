@@ -3542,7 +3542,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   { label: 'Candles Made', value: stats.totalCandles, icon: Flame, color: '#feca57' },
                   { label: 'Investment', value: formatCurrency(stats.totalInvestment), icon: DollarSign, color: '#ff9ff3' },
                   { label: 'Materials Value', value: formatCurrency(materials.reduce((sum, m) => sum + (m.packageCost / m.packageSize * m.qtyOnHand), 0)), icon: Package, color: '#feca57' },
-                  { label: 'Fragrance Value', value: formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0)), icon: Droplets, color: '#74b9ff' },
+                  { label: 'Fragrance Value', value: formatCurrency(fragranceBottles.filter(b => b.status !== 'archived').reduce((sum, bottle) => { const oz = calculateNetOzRemaining(bottle) || 0; const frag = fragrances.find(f => f.name === bottle.fragranceName); const price = frag ? calculateWeightedPricePerOz(frag.prices, frag.quantities) : (bottle.purchasePriceTotal / bottle.purchaseSizeOz || 0); return sum + (oz * price); }, 0)), icon: Droplets, color: '#74b9ff' },
                   { label: 'Low Stock', value: lowStockItems.length, icon: AlertTriangle, color: lowStockItems.length > 0 ? '#ff6b6b' : '#55efc4' },
                   { label: 'Recipes Ready', value: `${whatCanIMake.filter(w => w.maxQty >= 12).length} / ${whatCanIMake.length}`, icon: CheckCircle, color: '#55efc4' },
                   { label: 'Pending', value: `${stats.pendingBatches} batches`, icon: ShoppingCart, color: '#a29bfe' },
@@ -4759,7 +4759,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Total Fragrance Value</div>
-                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0))}</div>
+                  <div style={{ fontSize: '28px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(
+                    fragranceBottles.filter(b => b.status !== 'archived').reduce((sum, bottle) => {
+                      const oz = calculateNetOzRemaining(bottle) || 0;
+                      const frag = fragrances.find(f => f.name === bottle.fragranceName);
+                      const price = frag ? calculateWeightedPricePerOz(frag.prices, frag.quantities) : (bottle.purchasePriceTotal / bottle.purchaseSizeOz || 0);
+                      return sum + (oz * price);
+                    }, 0)
+                  )}</div>
                 </div>
                 <div style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', padding: '20px' }}>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '8px' }}>Low Stock Items</div>
@@ -5140,7 +5147,14 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
                   <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Value</div>
-                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((v, [size, qty]) => v + (qty * (f.prices?.[size] || 0)), 0), 0))}</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#74b9ff' }}>{formatCurrency(
+                    fragranceBottles.filter(b => b.status !== 'archived').reduce((sum, bottle) => {
+                      const ozRemaining = calculateNetOzRemaining(bottle) || 0;
+                      const frag = fragrances.find(f => f.name === bottle.fragranceName);
+                      const avgPricePerOz = frag ? calculateWeightedPricePerOz(frag.prices, frag.quantities) : (bottle.purchasePriceTotal / bottle.purchaseSizeOz || 0);
+                      return sum + (ozRemaining * avgPricePerOz);
+                    }, 0)
+                  )}</div>
                 </div>
               </div>
 
