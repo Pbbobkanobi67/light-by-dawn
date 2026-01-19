@@ -2045,18 +2045,23 @@ ${cleanedContent.substring(0, 12000)}`;
 
   const saveFragrance = async () => {
     if (!fragranceForm.name) return;
+
+    // Generate ID for new fragrances BEFORE saving to Supabase
+    const fragranceToSave = editingFragrance
+      ? { ...fragranceForm, id: editingFragrance }
+      : { ...fragranceForm, id: `FO-${Date.now()}-${Math.random().toString(36).substr(2, 4)}` };
+
     // Save to Supabase FIRST
-    const { error } = await supabase.from('fragrances').upsert([toSnakeCase({ ...fragranceForm })], { onConflict: 'id' });
+    const { error } = await supabase.from('fragrances').upsert([toSnakeCase(fragranceToSave)], { onConflict: 'id' });
     if (error) {
       alert('Failed to save: ' + error.message);
       return;
     }
 
     if (editingFragrance) {
-      setFragrances(fragrances.map(f => f.id === editingFragrance ? { ...fragranceForm, id: editingFragrance } : f));
+      setFragrances(fragrances.map(f => f.id === editingFragrance ? fragranceToSave : f));
     } else {
-      const newId = `FO-${String(fragrances.length + 1).padStart(3, '0')}`;
-      setFragrances([...fragrances, { ...fragranceForm, id: newId }]);
+      setFragrances([...fragrances, fragranceToSave]);
     }
     setShowFragranceModal(false);
   };
