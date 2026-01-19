@@ -2086,6 +2086,19 @@ ${cleanedContent.substring(0, 12000)}`;
     setFragrances(fragrances.map(f => f.id === id ? { ...f, archived: !f.archived } : f));
   };
 
+  const deleteBottle = async (bottleId) => {
+    const bottle = fragranceBottles.find(b => b.id === bottleId);
+    if (!confirm(`Delete this ${bottle?.purchaseSizeOz || ''}oz bottle of ${bottle?.fragranceName || 'fragrance'}? This cannot be undone.`)) return;
+
+    const { error } = await supabase.from('fragrance_bottles').delete().eq('id', bottleId);
+    if (error) {
+      alert('Failed to delete: ' + error.message);
+      return;
+    }
+
+    setFragranceBottles(prev => prev.filter(b => b.id !== bottleId));
+  };
+
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
@@ -6990,9 +7003,19 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                   </div>
                                   <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{Math.round(percent)}%</span>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#fce4d6' }}>{ozRemaining.toFixed(1)} oz</span>
-                                  <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz} oz bottle)</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fce4d6' }}>{ozRemaining.toFixed(1)} oz</span>
+                                    <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz} oz bottle)</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteBottle(bottle.id)}
+                                    style={{ padding: '4px', background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '4px', color: '#ff6b6b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    title="Delete bottle"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
                                 </div>
                               </div>
                             );
