@@ -419,6 +419,7 @@ export default function CandleBusinessApp() {
     tareWeightGrams: null,
     currentWeightGrams: null,
     notes: '',
+    isNewBottle: false, // false = existing/partial, true = new/full bottle
   });
 
   // Fragrance page state
@@ -701,6 +702,39 @@ export default function CandleBusinessApp() {
     saveToStorage('fragranceBottles', fragranceBottles);
     safeSyncToSupabase('fragrance_bottles', fragranceBottles, 'fragranceBottles');
   }, [fragranceBottles, safeSyncToSupabase]);
+
+  // Smart Sync: Update fragrance qtyOnHand from bottle totals
+  // When bottles exist for a fragrance, their total becomes the source of truth
+  useEffect(() => {
+    if (fragranceBottles.length === 0) return;
+
+    // Group bottles by fragrance name and calculate totals
+    const bottleTotals = {};
+    fragranceBottles.forEach(bottle => {
+      if (bottle.status === 'archived') return;
+      const ozRemaining = calculateNetOzRemaining(bottle) || 0;
+      if (!bottleTotals[bottle.fragranceName]) {
+        bottleTotals[bottle.fragranceName] = 0;
+      }
+      bottleTotals[bottle.fragranceName] += ozRemaining;
+    });
+
+    // Update fragrances that have bottles tracked
+    setFragrances(prev => {
+      let changed = false;
+      const updated = prev.map(frag => {
+        if (bottleTotals.hasOwnProperty(frag.name)) {
+          const newQty = Math.round(bottleTotals[frag.name] * 100) / 100; // Round to 2 decimals
+          if (Math.abs((frag.qtyOnHand || 0) - newQty) > 0.01) {
+            changed = true;
+            return { ...frag, qtyOnHand: newQty };
+          }
+        }
+        return frag;
+      });
+      return changed ? updated : prev;
+    });
+  }, [fragranceBottles]);
 
   // Auto-scroll conversation to bottom when new messages arrive
   useEffect(() => {
@@ -1257,12 +1291,13 @@ export default function CandleBusinessApp() {
   }, [recipes, recipeSort, whatCanIMake, showArchivedRecipes]);
 
   // Auto-deduct materials when logging a batch
-  const deductBatchMaterials = (batch) => {
+  // skipFragrances: when true, skips fragrance deduction (used by Batch Wizard since bottles handle it via Smart Sync)
+  const deductBatchMaterials = (batch, { skipFragrances = false } = {}) => {
     const recipe = recipes.find(r => r.name === batch.recipe);
     if (!recipe) return;
-    
+
     const needs = calculateRecipeMaterials(recipe, batch.quantity);
-    
+
     // Deduct wax (from first available wax)
     const waxLbsNeeded = needs.wax / 16;
     let waxRemaining = waxLbsNeeded;
@@ -1274,16 +1309,18 @@ export default function CandleBusinessApp() {
       }
       return m;
     }));
-    
-    // Deduct fragrances
-    setFragrances(prev => prev.map(f => {
-      const needed = needs.fragranceBreakdown.find(fb => fb.name === f.name);
-      if (needed && f.qtyOnHand !== undefined) {
-        return { ...f, qtyOnHand: Math.max(0, f.qtyOnHand - needed.oz) };
-      }
-      return f;
-    }));
-    
+
+    // Deduct fragrances (skip if bottles are handling it via Smart Sync)
+    if (!skipFragrances) {
+      setFragrances(prev => prev.map(f => {
+        const needed = needs.fragranceBreakdown.find(fb => fb.name === f.name);
+        if (needed && f.qtyOnHand !== undefined) {
+          return { ...f, qtyOnHand: Math.max(0, f.qtyOnHand - needed.oz) };
+        }
+        return f;
+      }));
+    }
+
     // Deduct containers
     setMaterials(prev => prev.map(m => {
       if (m.name === batch.container) {
@@ -5076,7 +5113,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
                   <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Stock</div>
-                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + Object.entries(f.quantities || {}).reduce((s, [sz, qty]) => s + (qty * parseFloat(sz)), 0), 0).toFixed(1)} oz</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + (f.qtyOnHand || 0), 0).toFixed(1)} oz</div>
+                </div>
+                <div className="stat-card" style={{ background: 'rgba(162,155,254,0.08)', border: '1px solid rgba(162,155,254,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Bottles Tracked</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#a29bfe' }}>{fragranceBottles.filter(b => b.status !== 'archived').length}</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '2px' }}>{[...new Set(fragranceBottles.filter(b => b.status !== 'archived').map(b => b.fragranceName))].length} fragrances</div>
                 </div>
                 <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
                   <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Value</div>
@@ -5123,6 +5165,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
                       {sortedFragrances.map(f => {
                         const isSelected = selectedFragrances.includes(f.id);
+                        const bottlesForFragrance = fragranceBottles.filter(b => b.fragranceName === f.name && b.status !== 'archived');
+                        const hasBottles = bottlesForFragrance.length > 0;
                         return (
                           <div key={f.id} onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '16px', padding: '20px', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative' }}>
                             {isSelected && (
@@ -5133,9 +5177,17 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                               <div>
                                 <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>{f.name}</h4>
-                                <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type === 'FO' ? 'Fragrance Oil' : 'Essential Oil'}</span>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type === 'FO' ? 'Fragrance Oil' : 'Essential Oil'}</span>
+                                  {hasBottles && (
+                                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: 'rgba(162,155,254,0.2)', color: '#a29bfe', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <Scale size={10} /> {bottlesForFragrance.length} bottle{bottlesForFragrance.length !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                                <button onClick={() => { setBottleForm({ fragranceId: f.id, fragranceName: f.name, vendor: f.vendor || '', purchaseDate: new Date().toISOString().split('T')[0], purchaseSizeOz: f.packageSize || 16, purchasePriceTotal: f.packageCost || 0, grossWeightGrams: null, tareWeightGrams: null, currentWeightGrams: null, notes: '' }); setShowAddBottleModal(true); }} style={{ background: hasBottles ? 'rgba(162,155,254,0.3)' : 'rgba(162,155,254,0.15)', border: 'none', borderRadius: '6px', padding: '6px', color: '#a29bfe', cursor: 'pointer' }} title="Track bottles by weight"><Scale size={12} /></button>
                                 <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={12} /></button>
                                 <button onClick={() => window.open(`https://www.amazon.com/s?k=fragrance+oil+${encodeURIComponent(f.name)}`, '_blank')} style={{ background: 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: '#ff9f6b', cursor: 'pointer' }} title="Search on Amazon"><ExternalLink size={12} /></button>
                                 <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '6px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={12} /></button>
@@ -5144,7 +5196,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> <VendorLink vendor={f.vendor} /></div>
-                              <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Stock:</span> <span style={{ color: '#55efc4', fontWeight: 600 }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span></div>
+                              <div>
+                                <span style={{ color: 'rgba(252,228,214,0.5)' }}>Stock:</span>{' '}
+                                <span style={{ color: '#55efc4', fontWeight: 600 }}>{(f.qtyOnHand || 0).toFixed(1)} oz</span>
+                                {hasBottles && <span style={{ fontSize: '10px', color: '#a29bfe', marginLeft: '4px' }} title="Weight-tracked">●</span>}
+                              </div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Max Load:</span> {f.maxLoad}%</div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Avg $/oz:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</span></div>
                             </div>
@@ -5159,6 +5215,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {sortedFragrances.map(f => {
                         const isSelected = selectedFragrances.includes(f.id);
+                        const bottlesForFragrance = fragranceBottles.filter(b => b.fragranceName === f.name && b.status !== 'archived');
+                        const hasBottles = bottlesForFragrance.length > 0;
                         return (
                           <div key={f.id} className="list-item" onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div className="item-checkbox" style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#a29bfe' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#a29bfe' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -5168,14 +5226,24 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
                                 <h4 style={{ fontSize: '15px', fontWeight: 600 }}>{f.name}</h4>
                                 <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', background: f.type === 'FO' ? 'rgba(254,202,87,0.2)' : 'rgba(85,239,196,0.2)', color: f.type === 'FO' ? '#feca57' : '#55efc4' }}>{f.type}</span>
+                                {hasBottles && (
+                                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', background: 'rgba(162,155,254,0.2)', color: '#a29bfe', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <Scale size={9} /> {bottlesForFragrance.length}
+                                  </span>
+                                )}
                               </div>
-                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}><VendorLink vendor={f.vendor} style={{ fontSize: '12px' }} /> • <span style={{ color: '#55efc4' }}>{Object.entries(f.quantities || {}).reduce((sum, [sz, qty]) => sum + (qty * parseFloat(sz)), 0).toFixed(1)} oz</span></div>
+                              <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>
+                                <VendorLink vendor={f.vendor} style={{ fontSize: '12px' }} /> •{' '}
+                                <span style={{ color: '#55efc4' }}>{(f.qtyOnHand || 0).toFixed(1)} oz</span>
+                                {hasBottles && <span style={{ color: '#a29bfe', marginLeft: '2px' }} title="Weight-tracked">●</span>}
+                              </div>
                             </div>
                             <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
                               <div style={{ fontSize: '16px', fontWeight: 600, color: '#feca57' }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}/oz</div>
                               <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>Max {f.maxLoad}%</div>
                             </div>
                             <div className="item-actions" style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => { setBottleForm({ fragranceId: f.id, fragranceName: f.name, vendor: f.vendor || '', purchaseDate: new Date().toISOString().split('T')[0], purchaseSizeOz: f.packageSize || 16, purchasePriceTotal: f.packageCost || 0, grossWeightGrams: null, tareWeightGrams: null, currentWeightGrams: null, notes: '' }); setShowAddBottleModal(true); }} style={{ background: hasBottles ? 'rgba(162,155,254,0.3)' : 'rgba(162,155,254,0.15)', border: 'none', borderRadius: '6px', padding: '8px', color: '#a29bfe', cursor: 'pointer' }} title="Track bottles by weight"><Scale size={14} /></button>
                               <button onClick={() => openEditFragrance(f)} style={{ background: 'rgba(254,202,87,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#feca57', cursor: 'pointer' }}><Edit2 size={14} /></button>
                               <button onClick={() => window.open(`https://www.amazon.com/s?k=fragrance+oil+${encodeURIComponent(f.name)}`, '_blank')} style={{ background: 'rgba(255,159,107,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: '#ff9f6b', cursor: 'pointer' }} title="Search on Amazon"><ExternalLink size={14} /></button>
                               <button onClick={(e) => archiveFragrance(f.id, e)} style={{ background: f.archived ? 'rgba(85,239,196,0.2)' : 'rgba(162,155,254,0.2)', border: 'none', borderRadius: '6px', padding: '8px', color: f.archived ? '#55efc4' : '#a29bfe', cursor: 'pointer' }} title={f.archived ? 'Unarchive' : 'Archive'}><Archive size={14} /></button>
@@ -7940,9 +8008,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     };
                     setBatchHistory(prev => [newBatch, ...prev]);
 
-                    // Deduct materials
+                    // Deduct materials (skip fragrances if bottles are selected - Smart Sync handles it)
                     if (recipe) {
-                      deductBatchMaterials({ recipe: wizardData.recipe, quantity: wizardData.quantity, size: wizardData.size });
+                      const hasBottlesSelected = wizardData.selectedBottles.length > 0;
+                      deductBatchMaterials(
+                        { recipe: wizardData.recipe, quantity: wizardData.quantity, size: wizardData.size },
+                        { skipFragrances: hasBottlesSelected }
+                      );
                     }
 
                     // Close wizard
@@ -7991,6 +8063,36 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* New vs Existing Toggle */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setBottleForm({ ...bottleForm, isNewBottle: false })}
+                    style={{
+                      flex: 1, padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
+                      background: !bottleForm.isNewBottle ? 'rgba(255,159,107,0.2)' : 'rgba(255,255,255,0.05)',
+                      border: `2px solid ${!bottleForm.isNewBottle ? '#ff9f6b' : 'rgba(255,255,255,0.1)'}`,
+                      color: !bottleForm.isNewBottle ? '#ff9f6b' : 'rgba(252,228,214,0.5)',
+                      fontWeight: !bottleForm.isNewBottle ? 600 : 400, fontSize: '13px', transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ marginBottom: '4px' }}>Existing Bottle</div>
+                    <div style={{ fontSize: '10px', fontWeight: 400, opacity: 0.8 }}>Partially used, estimate oz</div>
+                  </button>
+                  <button
+                    onClick={() => setBottleForm({ ...bottleForm, isNewBottle: true })}
+                    style={{
+                      flex: 1, padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
+                      background: bottleForm.isNewBottle ? 'rgba(85,239,196,0.2)' : 'rgba(255,255,255,0.05)',
+                      border: `2px solid ${bottleForm.isNewBottle ? '#55efc4' : 'rgba(255,255,255,0.1)'}`,
+                      color: bottleForm.isNewBottle ? '#55efc4' : 'rgba(252,228,214,0.5)',
+                      fontWeight: bottleForm.isNewBottle ? 600 : 400, fontSize: '13px', transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ marginBottom: '4px' }}>New Bottle</div>
+                    <div style={{ fontSize: '10px', fontWeight: 400, opacity: 0.8 }}>Full/unopened, exact oz</div>
+                  </button>
+                </div>
+
                 {/* Fragrance Selection */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '6px' }}>Fragrance *</label>
@@ -8033,7 +8135,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       value={bottleForm.currentWeightGrams || ''}
                       onChange={e => {
                         const weight = parseFloat(e.target.value) || null;
-                        setBottleForm({ ...bottleForm, grossWeightGrams: weight, currentWeightGrams: weight });
+                        setBottleForm({ ...bottleForm, grossWeightGrams: bottleForm.isNewBottle ? weight : bottleForm.grossWeightGrams, currentWeightGrams: weight });
                       }}
                       placeholder="Scale reading"
                       style={{ ...inputStyle, padding: '10px', borderColor: 'rgba(162,155,254,0.4)' }}
@@ -8076,18 +8178,37 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </div>
                 </details>
 
-                {/* Estimated oz remaining preview */}
+                {/* Oz remaining preview - different display for new vs existing */}
                 {bottleForm.currentWeightGrams && bottleForm.purchaseSizeOz && (
-                  <div style={{ padding: '12px', background: 'rgba(85,239,196,0.1)', borderRadius: '8px', border: '1px solid rgba(85,239,196,0.2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>Estimated remaining:</span>
-                      <span style={{ fontSize: '16px', fontWeight: 600, color: '#55efc4' }}>
-                        ~{((bottleForm.currentWeightGrams * 0.9) / GRAMS_PER_OZ).toFixed(1)} oz
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.4)', marginTop: '4px' }}>
-                      Based on estimated 10% tare weight
-                    </div>
+                  <div style={{ padding: '12px', background: bottleForm.isNewBottle ? 'rgba(85,239,196,0.15)' : 'rgba(255,159,107,0.1)', borderRadius: '8px', border: `1px solid ${bottleForm.isNewBottle ? 'rgba(85,239,196,0.3)' : 'rgba(255,159,107,0.2)'}` }}>
+                    {bottleForm.isNewBottle ? (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>Contents:</span>
+                          <span style={{ fontSize: '16px', fontWeight: 600, color: '#55efc4' }}>
+                            {bottleForm.purchaseSizeOz} oz <Check size={14} style={{ marginLeft: '4px', verticalAlign: 'middle' }} />
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#55efc4', marginTop: '4px' }}>
+                          Full bottle - exact amount known
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginTop: '2px' }}>
+                          Tare weight will be calculated: {(bottleForm.currentWeightGrams - (bottleForm.purchaseSizeOz * GRAMS_PER_OZ)).toFixed(0)}g estimated
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13px', color: 'rgba(252,228,214,0.7)' }}>Estimated remaining:</span>
+                          <span style={{ fontSize: '16px', fontWeight: 600, color: '#ff9f6b' }}>
+                            ~{((bottleForm.currentWeightGrams * 0.9) / GRAMS_PER_OZ).toFixed(1)} oz
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#ff9f6b', marginTop: '4px' }}>
+                          Approximate - based on estimated 10% tare weight
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
