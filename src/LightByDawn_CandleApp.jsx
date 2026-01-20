@@ -7017,8 +7017,27 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <div style={{ textAlign: 'right' }}>
                                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#fce4d6' }}>{ozRemaining.toFixed(1)} oz</span>
-                                    <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.purchaseSizeOz}oz)</span>
+                                    <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.4)', marginLeft: '6px' }}>({bottle.currentWeightGrams}g)</span>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newWeight = prompt(
+                                        `Update current weight for this ${bottle.purchaseSizeOz}oz bottle:\n\nCurrent: ${bottle.currentWeightGrams || 0}g\n\nEnter new weight in grams:`,
+                                        bottle.currentWeightGrams || ''
+                                      );
+                                      if (newWeight !== null) {
+                                        const weight = parseFloat(newWeight) || 0;
+                                        setFragranceBottles(prev => prev.map(b =>
+                                          b.id === bottle.id ? { ...b, currentWeightGrams: weight, lastWeighedAt: new Date().toISOString() } : b
+                                        ));
+                                      }
+                                    }}
+                                    style={{ padding: '4px', background: 'rgba(116,185,255,0.15)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '4px', color: '#74b9ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    title={`Update weight (current: ${bottle.currentWeightGrams}g)`}
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => {
