@@ -6892,7 +6892,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   <div style={{ display: 'grid', gridTemplateColumns: '60px 90px 70px', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', fontSize: '10px', color: 'rgba(252,228,214,0.5)' }}>
                     <span>Size</span><span>Price per Bottle</span><span>$/oz</span>
                   </div>
-                  {[0.5, 1, 4, 8, 16].map(size => {
+                  {[0.5, 1, 2, 4, 8, 16].map(size => {
                     const price = fragranceForm.prices?.[size] || 0;
                     const pricePerOz = price > 0 ? price / size : 0;
                     return (
