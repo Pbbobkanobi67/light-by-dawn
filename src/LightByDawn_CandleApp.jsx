@@ -5138,7 +5138,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                 </div>
                 <div className="stat-card" style={{ background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
                   <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Total Stock</div>
-                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragrances.reduce((sum, f) => sum + (f.qtyOnHand || 0), 0).toFixed(1)} oz</div>
+                  <div className="stat-value" style={{ fontSize: '24px', fontWeight: 700, color: '#55efc4' }}>{fragranceBottles.filter(b => b.status !== 'archived').reduce((sum, b) => sum + (calculateNetOzRemaining(b) || 0), 0).toFixed(1)} oz</div>
                 </div>
                 <div className="stat-card" style={{ background: 'rgba(162,155,254,0.08)', border: '1px solid rgba(162,155,254,0.15)', borderRadius: '12px', padding: '16px 20px' }}>
                   <div className="stat-label" style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)', textTransform: 'uppercase', marginBottom: '6px' }}>Bottles Tracked</div>
@@ -5199,6 +5199,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         const isSelected = selectedFragrances.includes(f.id);
                         const bottlesForFragrance = fragranceBottles.filter(b => b.fragranceName === f.name && b.status !== 'archived');
                         const hasBottles = bottlesForFragrance.length > 0;
+                        const stockFromBottles = bottlesForFragrance.reduce((sum, b) => sum + (calculateNetOzRemaining(b) || 0), 0);
                         return (
                           <div key={f.id} onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '16px', padding: '20px', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative' }}>
                             {isSelected && (
@@ -5230,8 +5231,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Vendor:</span> <VendorLink vendor={f.vendor} /></div>
                               <div>
                                 <span style={{ color: 'rgba(252,228,214,0.5)' }}>Stock:</span>{' '}
-                                <span style={{ color: '#55efc4', fontWeight: 600 }}>{(f.qtyOnHand || 0).toFixed(1)} oz</span>
-                                {hasBottles && <span style={{ fontSize: '10px', color: '#a29bfe', marginLeft: '4px' }} title="Weight-tracked">●</span>}
+                                <span style={{ color: hasBottles ? '#55efc4' : 'rgba(252,228,214,0.4)', fontWeight: 600 }}>{stockFromBottles.toFixed(1)} oz</span>
+                                {!hasBottles && <span style={{ fontSize: '10px', color: 'rgba(252,228,214,0.3)', marginLeft: '4px' }}>(no bottles)</span>}
                               </div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Max Load:</span> {f.maxLoad}%</div>
                               <div><span style={{ color: 'rgba(252,228,214,0.5)' }}>Avg $/oz:</span> <span style={{ color: '#feca57', fontWeight: 600 }}>{(() => { const prices = f.prices || {}; const valid = Object.entries(prices).filter(([s, p]) => p > 0).map(([s, p]) => p / parseFloat(s)); return valid.length > 0 ? formatCurrency(valid.reduce((a, b) => a + b, 0) / valid.length) : (f.packageCost > 0 ? formatCurrency(f.packageCost / f.packageSize) : '$0.00'); })()}</span></div>
@@ -5249,6 +5250,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                         const isSelected = selectedFragrances.includes(f.id);
                         const bottlesForFragrance = fragranceBottles.filter(b => b.fragranceName === f.name && b.status !== 'archived');
                         const hasBottles = bottlesForFragrance.length > 0;
+                        const stockFromBottles = bottlesForFragrance.reduce((sum, b) => sum + (calculateNetOzRemaining(b) || 0), 0);
                         return (
                           <div key={f.id} className="list-item" onClick={() => toggleFragranceSelection(f.id)} style={{ background: isSelected ? 'rgba(162,155,254,0.15)' : 'rgba(255,159,107,0.08)', border: `2px solid ${isSelected ? 'rgba(162,155,254,0.5)' : 'rgba(255,159,107,0.15)'}`, borderRadius: '12px', padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div className="item-checkbox" style={{ width: '24px', height: '24px', borderRadius: '6px', border: `2px solid ${isSelected ? '#a29bfe' : 'rgba(255,159,107,0.3)'}`, background: isSelected ? '#a29bfe' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -5266,8 +5268,8 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                               </div>
                               <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>
                                 <VendorLink vendor={f.vendor} style={{ fontSize: '12px' }} /> •{' '}
-                                <span style={{ color: '#55efc4' }}>{(f.qtyOnHand || 0).toFixed(1)} oz</span>
-                                {hasBottles && <span style={{ color: '#a29bfe', marginLeft: '2px' }} title="Weight-tracked">●</span>}
+                                <span style={{ color: hasBottles ? '#55efc4' : 'rgba(252,228,214,0.4)' }}>{stockFromBottles.toFixed(1)} oz</span>
+                                {!hasBottles && <span style={{ color: 'rgba(252,228,214,0.3)', marginLeft: '2px' }}>(no bottles)</span>}
                               </div>
                             </div>
                             <div className="item-price" style={{ textAlign: 'right', marginRight: '12px' }}>
