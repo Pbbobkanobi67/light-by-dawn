@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move, Store, RefreshCw, Info } from 'lucide-react';
+import { Flame, Package, Droplets, BookOpen, Calculator, DollarSign, ShoppingCart, History, LayoutDashboard, Plus, Trash2, Edit2, Save, X, ChevronRight, TrendingUp, Box, RotateCcw, Download, FileText, Grid, List, Table, Sparkles, Check, MessageSquare, AlertTriangle, Filter, Minus, CheckCircle, XCircle, Zap, ClipboardList, Copy, Menu, Archive, ExternalLink, Send, Settings, Key, Printer, ScrollText, Scale, Move, Store, RefreshCw, Info, Link } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // Initial data matching your Excel
@@ -6878,8 +6878,11 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       </div>
                     )}
                     {weightedAvg > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 12px', background: 'rgba(254,202,87,0.1)', borderRadius: '6px', fontSize: '12px', marginTop: hasBottles ? '0' : '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '8px 12px', background: 'rgba(254,202,87,0.1)', borderRadius: '6px', fontSize: '12px', marginTop: hasBottles ? '0' : '8px' }}>
                         <span style={{ color: 'rgba(252,228,214,0.6)' }}>Avg Price: <span style={{ color: '#feca57', fontWeight: 600 }}>${weightedAvg.toFixed(2)}/oz</span></span>
+                        {hasBottles && (
+                          <span style={{ color: 'rgba(252,228,214,0.6)' }}>Total Value: <span style={{ color: '#55efc4', fontWeight: 600 }}>${(totalOzFromBottles * weightedAvg).toFixed(2)}</span></span>
+                        )}
                       </div>
                     )}
                   </div>
