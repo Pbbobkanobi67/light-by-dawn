@@ -18,22 +18,50 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Shopify access token not configured' });
   }
 
-  const { endpoint, limit = 50, since_id, status, created_at_min } = req.query;
+  const { endpoint, limit = 50, since_id, status, created_at_min, inventory_item_ids, location_id } = req.query;
 
   if (!endpoint) {
     return res.status(400).json({ error: 'Missing endpoint parameter' });
   }
 
-  // Build query string
+  // Build query string based on endpoint type
   const params = new URLSearchParams();
   if (limit) params.append('limit', limit);
   if (since_id) params.append('since_id', since_id);
   if (status) params.append('status', status);
   if (created_at_min) params.append('created_at_min', created_at_min);
+  if (inventory_item_ids) params.append('inventory_item_ids', inventory_item_ids);
+  if (location_id) params.append('location_id', location_id);
 
   const url = `https://${SHOPIFY_STORE}.myshopify.com/admin/api/2024-01/${endpoint}.json?${params.toString()}`;
 
   try {
+    // Handle POST requests (for inventory updates)
+    if (req.method === 'POST') {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Shopify API error:', response.status, errorText);
+        return res.status(response.status).json({
+          error: 'Shopify API error',
+          status: response.status,
+          message: errorText
+        });
+      }
+
+      const data = await response.json();
+      return res.status(200).json(data);
+    }
+
+    // Handle GET requests
     const response = await fetch(url, {
       method: 'GET',
       headers: {

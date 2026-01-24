@@ -136,6 +136,13 @@ ALTER TABLE fragrances ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
 
 -- ============================================
+-- MIGRATION: Shopify Integration columns for recipes
+-- ============================================
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_variant_id TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_product_id TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_inventory_item_id TEXT;
+
+-- ============================================
 -- Saved Instructions table (for AI-generated batch instructions)
 -- ============================================
 

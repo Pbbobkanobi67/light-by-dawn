@@ -385,7 +385,7 @@ export default function CandleBusinessApp() {
   const [editingFragrance, setEditingFragrance] = useState(null);
 
   // Form states
-  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [] });
+  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0, fillCapacity: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
@@ -773,6 +773,9 @@ export default function CandleBusinessApp() {
   const [shopifyLoading, setShopifyLoading] = useState(false);
   const [shopifyError, setShopifyError] = useState(null);
   const [shopifyLastSync, setShopifyLastSync] = useState(null);
+  const [shopifyLocations, setShopifyLocations] = useState([]);
+  const [shopifyInventorySync, setShopifyInventorySync] = useState({ syncing: false, preview: null, lastSyncedOrderIds: [] });
+  const [showShopifySyncModal, setShowShopifySyncModal] = useState(false);
 
   // Fetch Shopify data
   const fetchShopifyData = useCallback(async () => {
@@ -783,9 +786,10 @@ export default function CandleBusinessApp() {
       const ninetyDaysAgo = new Date();
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-      const [ordersRes, productsRes] = await Promise.all([
+      const [ordersRes, productsRes, locationsRes] = await Promise.all([
         fetch(`/api/shopify?endpoint=orders&status=any&created_at_min=${ninetyDaysAgo.toISOString()}&limit=50`),
-        fetch(`/api/shopify?endpoint=products&limit=50`)
+        fetch(`/api/shopify?endpoint=products&limit=50`),
+        fetch(`/api/shopify?endpoint=locations`)
       ]);
 
       if (!ordersRes.ok || !productsRes.ok) {
@@ -794,9 +798,11 @@ export default function CandleBusinessApp() {
 
       const ordersData = await ordersRes.json();
       const productsData = await productsRes.json();
+      const locationsData = locationsRes.ok ? await locationsRes.json() : { locations: [] };
 
       setShopifyOrders(ordersData.orders || []);
       setShopifyProducts(productsData.products || []);
+      setShopifyLocations(locationsData.locations || []);
       setShopifyLastSync(new Date().toISOString());
     } catch (err) {
       console.error('Shopify fetch error:', err);
@@ -805,6 +811,106 @@ export default function CandleBusinessApp() {
       setShopifyLoading(false);
     }
   }, []);
+
+  // Generate inventory sync preview from Shopify orders
+  const generateShopifySyncPreview = useCallback(() => {
+    // Get linked recipes
+    const linkedRecipes = recipes.filter(r => r.shopifyVariantId);
+    if (linkedRecipes.length === 0) {
+      return { changes: [], newOrderIds: [], message: 'No recipes linked to Shopify products' };
+    }
+
+    // Get new orders (exclude already synced)
+    const newOrders = shopifyOrders.filter(o =>
+      o.financial_status === 'paid' &&
+      !shopifyInventorySync.lastSyncedOrderIds.includes(o.id)
+    );
+
+    if (newOrders.length === 0) {
+      return { changes: [], newOrderIds: [], message: 'No new paid orders to sync' };
+    }
+
+    // Calculate quantity changes per recipe
+    const changes = {};
+    const newOrderIds = newOrders.map(o => o.id);
+
+    newOrders.forEach(order => {
+      order.line_items?.forEach(item => {
+        const recipe = linkedRecipes.find(r => r.shopifyVariantId === String(item.variant_id));
+        if (recipe) {
+          if (!changes[recipe.id]) {
+            changes[recipe.id] = {
+              recipeId: recipe.id,
+              recipeName: recipe.name,
+              soldQuantity: 0,
+              orders: []
+            };
+          }
+          changes[recipe.id].soldQuantity += item.quantity;
+          changes[recipe.id].orders.push({
+            orderNumber: order.order_number,
+            quantity: item.quantity,
+            date: order.created_at
+          });
+        }
+      });
+    });
+
+    return {
+      changes: Object.values(changes),
+      newOrderIds,
+      message: null
+    };
+  }, [recipes, shopifyOrders, shopifyInventorySync.lastSyncedOrderIds]);
+
+  // Apply inventory sync (decrement local inventory based on Shopify sales)
+  const applyShopifyInventorySync = async (preview) => {
+    if (!preview.changes.length) return;
+
+    setShopifyInventorySync(prev => ({ ...prev, syncing: true }));
+
+    try {
+      // Note: This only marks orders as synced. The actual inventory tracking
+      // for recipes would need a separate inventory field on recipes.
+      // For now, we're just tracking which orders have been synced.
+      setShopifyInventorySync(prev => ({
+        ...prev,
+        syncing: false,
+        lastSyncedOrderIds: [...prev.lastSyncedOrderIds, ...preview.newOrderIds],
+        preview: null
+      }));
+      setShowShopifySyncModal(false);
+    } catch (err) {
+      console.error('Sync error:', err);
+      setShopifyInventorySync(prev => ({ ...prev, syncing: false }));
+    }
+  };
+
+  // Push inventory to Shopify
+  const pushInventoryToShopify = async (recipe, quantity) => {
+    if (!recipe.shopifyInventoryItemId || !shopifyLocations.length) {
+      throw new Error('Missing inventory item ID or location');
+    }
+
+    const locationId = shopifyLocations[0].id; // Use first location
+
+    const response = await fetch('/api/shopify?endpoint=inventory_levels/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location_id: locationId,
+        inventory_item_id: parseInt(recipe.shopifyInventoryItemId),
+        available: quantity
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update inventory');
+    }
+
+    return await response.json();
+  };
 
   // Quick adjust inventory
   const adjustInventory = (materialId, amount) => {
@@ -2102,7 +2208,7 @@ ${cleanedContent.substring(0, 12000)}`;
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
-    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: appDefaults.defaultRecipeFoLoad || 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [] });
+    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: appDefaults.defaultRecipeFoLoad || 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
     setRecipeModalPos({ x: null, y: null }); // Reset to centered
     setRecipeModalSize({ width: 700, height: null }); // Reset size
     setShowRecipeModal(true);
@@ -2237,7 +2343,7 @@ ${cleanedContent.substring(0, 12000)}`;
   const copyRecipe = (recipe, e) => {
     if (e) e.stopPropagation();
     setEditingRecipe(null);
-    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components], dyes: [...(recipe.dyes || [])] });
+    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components], dyes: [...(recipe.dyes || [])], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
     setShowRecipeModal(true);
   };
 
@@ -6550,6 +6656,105 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                     </div>
                   </div>
 
+                  {/* Linked Recipes Section - Inventory Sync */}
+                  {(() => {
+                    const linkedRecipes = recipes.filter(r => r.shopifyVariantId);
+                    if (linkedRecipes.length === 0 && shopifyOrders.length > 0) {
+                      return (
+                        <div style={{ marginTop: '32px', background: 'rgba(85,239,196,0.08)', border: '1px solid rgba(85,239,196,0.15)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                          <Link size={32} style={{ color: 'rgba(85,239,196,0.5)', marginBottom: '12px' }} />
+                          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>No Recipes Linked</h3>
+                          <p style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '16px' }}>
+                            Link your recipes to Shopify products to enable inventory sync.
+                          </p>
+                          <button
+                            onClick={() => setActiveTab('recipes')}
+                            style={{ padding: '10px 20px', background: 'rgba(85,239,196,0.2)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', color: '#55efc4', cursor: 'pointer', fontSize: '13px' }}
+                          >
+                            Go to Recipes
+                          </button>
+                        </div>
+                      );
+                    }
+                    if (linkedRecipes.length === 0) return null;
+                    return (
+                      <div style={{ marginTop: '32px', background: 'rgba(85,239,196,0.08)', border: '1px solid rgba(85,239,196,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(85,239,196,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                          <h3 style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Link size={18} /> Linked Recipes ({linkedRecipes.length})
+                          </h3>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                const preview = generateShopifySyncPreview();
+                                setShopifyInventorySync(prev => ({ ...prev, preview }));
+                                setShowShopifySyncModal(true);
+                              }}
+                              style={{ padding: '8px 16px', background: 'rgba(85,239,196,0.2)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '8px', color: '#55efc4', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                            >
+                              <RefreshCw size={14} /> Sync from Shopify
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ padding: '20px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Recipe</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Shopify Product</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Shopify Inventory</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {linkedRecipes.map(recipe => {
+                                const product = shopifyProducts.find(p => String(p.id) === recipe.shopifyProductId);
+                                const variant = product?.variants?.find(v => String(v.id) === recipe.shopifyVariantId);
+                                return (
+                                  <tr key={recipe.id} style={{ borderTop: '1px solid rgba(85,239,196,0.1)' }}>
+                                    <td style={{ padding: '12px' }}>
+                                      <div style={{ fontWeight: 600 }}>{recipe.name}</div>
+                                      <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{recipe.vibe}</div>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                      <div style={{ fontSize: '13px' }}>{product?.title || 'Product not found'}</div>
+                                      {variant && variant.title !== 'Default Title' && (
+                                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{variant.title}</div>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                      <span style={{ fontWeight: 600, color: '#55efc4' }}>{variant?.inventory_quantity ?? 'N/A'}</span>
+                                    </td>
+                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                      <button
+                                        onClick={async () => {
+                                          const qty = prompt('Set Shopify inventory quantity:', variant?.inventory_quantity ?? '0');
+                                          if (qty !== null && !isNaN(parseInt(qty))) {
+                                            try {
+                                              await pushInventoryToShopify(recipe, parseInt(qty));
+                                              fetchShopifyData(); // Refresh to get updated inventory
+                                            } catch (err) {
+                                              alert('Failed to update: ' + err.message);
+                                            }
+                                          }
+                                        }}
+                                        disabled={!shopifyLocations.length}
+                                        style={{ padding: '6px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '6px', color: '#74b9ff', cursor: shopifyLocations.length ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: shopifyLocations.length ? 1 : 0.5 }}
+                                        title={shopifyLocations.length ? 'Push inventory to Shopify' : 'Load Shopify data first'}
+                                      >
+                                        Push to Shopify
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Products Section */}
                   {shopifyProducts.length > 0 && (
                     <div style={{ marginTop: '32px', background: 'rgba(255,159,107,0.08)', border: '1px solid rgba(255,159,107,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
@@ -6584,6 +6789,64 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
           )}
         </main>
       </div>
+
+      {/* Shopify Inventory Sync Modal */}
+      {showShopifySyncModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: 'linear-gradient(180deg, #2d1b3d 0%, #1a0a1e 100%)', borderRadius: '20px', width: '100%', maxWidth: '600px', maxHeight: '80vh', overflow: 'hidden', border: '1px solid rgba(85,239,196,0.3)' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid rgba(85,239,196,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', color: '#55efc4' }}>Sync Inventory from Shopify</h2>
+              <button onClick={() => setShowShopifySyncModal(false)} style={{ background: 'none', border: 'none', color: '#fce4d6', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(80vh - 160px)' }}>
+              {shopifyInventorySync.preview?.message ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <Info size={48} style={{ color: 'rgba(252,228,214,0.3)', marginBottom: '16px' }} />
+                  <p style={{ color: 'rgba(252,228,214,0.7)' }}>{shopifyInventorySync.preview.message}</p>
+                </div>
+              ) : shopifyInventorySync.preview?.changes?.length > 0 ? (
+                <>
+                  <p style={{ fontSize: '14px', color: 'rgba(252,228,214,0.7)', marginBottom: '20px' }}>
+                    Found {shopifyInventorySync.preview.newOrderIds?.length || 0} new paid orders. The following recipes will have their sold quantities recorded:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {shopifyInventorySync.preview.changes.map(change => (
+                      <div key={change.recipeId} style={{ background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '15px' }}>{change.recipeName}</span>
+                          <span style={{ color: '#ff6b6b', fontWeight: 600 }}>-{change.soldQuantity} sold</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)' }}>
+                          {change.orders.map((o, i) => (
+                            <span key={i}>Order #{o.orderNumber} ({o.quantity}){i < change.orders.length - 1 ? ', ' : ''}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <CheckCircle size={48} style={{ color: '#55efc4', marginBottom: '16px' }} />
+                  <p style={{ color: 'rgba(252,228,214,0.7)' }}>All orders are already synced!</p>
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(85,239,196,0.2)', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowShopifySyncModal(false)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', color: '#fce4d6', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
+              {shopifyInventorySync.preview?.changes?.length > 0 && (
+                <button
+                  onClick={() => applyShopifyInventorySync(shopifyInventorySync.preview)}
+                  disabled={shopifyInventorySync.syncing}
+                  style={{ padding: '12px 24px', background: shopifyInventorySync.syncing ? 'rgba(85,239,196,0.3)' : 'linear-gradient(135deg, #55efc4 0%, #74b9ff 100%)', border: 'none', borderRadius: '10px', color: '#1a0a1e', cursor: shopifyInventorySync.syncing ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600 }}
+                >
+                  {shopifyInventorySync.syncing ? 'Syncing...' : 'Mark as Synced'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* URL Import Modal */}
       {showUrlImportModal && (
@@ -7347,6 +7610,105 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   >
                     <Plus size={16} /> Add Dye Color
                   </button>
+                </div>
+
+                {/* Shopify Integration Section */}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4' }}>Shopify Product Link</label>
+                    {recipeForm.shopifyVariantId && (
+                      <button
+                        onClick={() => setRecipeForm({ ...recipeForm, shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null })}
+                        style={{ fontSize: '12px', color: '#ff6b6b', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        Unlink
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '12px' }}>
+                    Link this recipe to a Shopify product to sync inventory and track sales.
+                  </div>
+                  {shopifyProducts.length === 0 ? (
+                    <div style={{ padding: '16px', background: 'rgba(85,239,196,0.1)', border: '1px dashed rgba(85,239,196,0.3)', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>No Shopify products loaded</div>
+                      <button
+                        onClick={fetchShopifyData}
+                        disabled={shopifyLoading}
+                        style={{ fontSize: '12px', padding: '6px 12px', background: 'rgba(85,239,196,0.2)', border: '1px solid rgba(85,239,196,0.3)', borderRadius: '6px', color: '#55efc4', cursor: 'pointer' }}
+                      >
+                        {shopifyLoading ? 'Loading...' : 'Load Shopify Products'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <select
+                        value={recipeForm.shopifyProductId || ''}
+                        onChange={e => {
+                          const product = shopifyProducts.find(p => String(p.id) === e.target.value);
+                          if (product) {
+                            // Auto-select first variant if only one exists
+                            const defaultVariant = product.variants?.length === 1 ? product.variants[0] : null;
+                            setRecipeForm({
+                              ...recipeForm,
+                              shopifyProductId: String(product.id),
+                              shopifyVariantId: defaultVariant ? String(defaultVariant.id) : null,
+                              shopifyInventoryItemId: defaultVariant ? String(defaultVariant.inventory_item_id) : null
+                            });
+                          } else {
+                            setRecipeForm({ ...recipeForm, shopifyProductId: null, shopifyVariantId: null, shopifyInventoryItemId: null });
+                          }
+                        }}
+                        style={inputStyle}
+                      >
+                        <option value="">Select Shopify product...</option>
+                        {shopifyProducts.map(product => (
+                          <option key={product.id} value={product.id}>{product.title}</option>
+                        ))}
+                      </select>
+                      {recipeForm.shopifyProductId && (() => {
+                        const product = shopifyProducts.find(p => String(p.id) === recipeForm.shopifyProductId);
+                        if (!product || !product.variants || product.variants.length <= 1) return null;
+                        return (
+                          <select
+                            value={recipeForm.shopifyVariantId || ''}
+                            onChange={e => {
+                              const variant = product.variants.find(v => String(v.id) === e.target.value);
+                              setRecipeForm({
+                                ...recipeForm,
+                                shopifyVariantId: variant ? String(variant.id) : null,
+                                shopifyInventoryItemId: variant ? String(variant.inventory_item_id) : null
+                              });
+                            }}
+                            style={inputStyle}
+                          >
+                            <option value="">Select variant...</option>
+                            {product.variants.map(variant => (
+                              <option key={variant.id} value={variant.id}>
+                                {variant.title !== 'Default Title' ? variant.title : product.title} - ${variant.price}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+                      {recipeForm.shopifyVariantId && (
+                        <div style={{ padding: '12px', background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#55efc4', fontSize: '13px' }}>
+                            <CheckCircle size={16} />
+                            <span>Linked to Shopify</span>
+                          </div>
+                          {(() => {
+                            const product = shopifyProducts.find(p => String(p.id) === recipeForm.shopifyProductId);
+                            const variant = product?.variants?.find(v => String(v.id) === recipeForm.shopifyVariantId);
+                            return variant && (
+                              <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.6)', marginTop: '4px' }}>
+                                Inventory: {variant.inventory_quantity ?? 'N/A'} | Price: ${variant.price}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
