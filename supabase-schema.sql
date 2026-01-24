@@ -138,9 +138,13 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false;
 -- ============================================
 -- MIGRATION: Shopify Integration columns for recipes
 -- ============================================
+-- Old single-link columns (deprecated)
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_variant_id TEXT;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_product_id TEXT;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_inventory_item_id TEXT;
+
+-- New multi-link column (array of linked products)
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS shopify_links JSONB DEFAULT '[]';
 
 -- ============================================
 -- Saved Instructions table (for AI-generated batch instructions)

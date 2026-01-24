@@ -385,7 +385,7 @@ export default function CandleBusinessApp() {
   const [editingFragrance, setEditingFragrance] = useState(null);
 
   // Form states
-  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
+  const [recipeForm, setRecipeForm] = useState({ name: '', vibe: '', style: '', description: '', wax: '', wick: '', foLoad: 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyLinks: [] });
   const [materialForm, setMaterialForm] = useState({ id: '', category: 'Wax', name: '', vendor: '', unit: 'unit', packageSize: 1, packageCost: 0, qtyOnHand: 0, reorderPoint: 0, fillCapacity: 0 });
   const [fragranceForm, setFragranceForm] = useState({ name: '', type: 'FO', vendor: '', packageSize: 16, packageCost: 0, prices: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, quantities: { 0.5: 0, 1: 0, 4: 0, 8: 0, 16: 0 }, flashPoint: 200, maxLoad: 10, qtyOnHand: 0, reorderPoint: 0, archived: false });
 
@@ -814,8 +814,8 @@ export default function CandleBusinessApp() {
 
   // Generate inventory sync preview from Shopify orders
   const generateShopifySyncPreview = useCallback(() => {
-    // Get linked recipes
-    const linkedRecipes = recipes.filter(r => r.shopifyVariantId);
+    // Get linked recipes (those with shopifyLinks array containing items)
+    const linkedRecipes = recipes.filter(r => r.shopifyLinks?.length > 0);
     if (linkedRecipes.length === 0) {
       return { changes: [], newOrderIds: [], message: 'No recipes linked to Shopify products' };
     }
@@ -836,7 +836,10 @@ export default function CandleBusinessApp() {
 
     newOrders.forEach(order => {
       order.line_items?.forEach(item => {
-        const recipe = linkedRecipes.find(r => r.shopifyVariantId === String(item.variant_id));
+        // Find recipe that has this variant in its shopifyLinks array
+        const recipe = linkedRecipes.find(r =>
+          r.shopifyLinks?.some(link => link.variantId === String(item.variant_id))
+        );
         if (recipe) {
           if (!changes[recipe.id]) {
             changes[recipe.id] = {
@@ -886,30 +889,38 @@ export default function CandleBusinessApp() {
     }
   };
 
-  // Push inventory to Shopify
+  // Push inventory to Shopify (updates all linked variants)
   const pushInventoryToShopify = async (recipe, quantity) => {
-    if (!recipe.shopifyInventoryItemId || !shopifyLocations.length) {
-      throw new Error('Missing inventory item ID or location');
+    if (!recipe.shopifyLinks?.length || !shopifyLocations.length) {
+      throw new Error('No Shopify links or location');
     }
 
     const locationId = shopifyLocations[0].id; // Use first location
+    const results = [];
 
-    const response = await fetch('/api/shopify?endpoint=inventory_levels/set', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location_id: locationId,
-        inventory_item_id: parseInt(recipe.shopifyInventoryItemId),
-        available: quantity
-      })
-    });
+    // Update inventory for all linked variants
+    for (const link of recipe.shopifyLinks) {
+      if (!link.inventoryItemId) continue;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to update inventory');
+      const response = await fetch('/api/shopify?endpoint=inventory_levels/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location_id: locationId,
+          inventory_item_id: parseInt(link.inventoryItemId),
+          available: quantity
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Failed to update inventory for ${link.productTitle}`);
+      }
+
+      results.push(await response.json());
     }
 
-    return await response.json();
+    return results;
   };
 
   // Quick adjust inventory
@@ -2208,7 +2219,7 @@ ${cleanedContent.substring(0, 12000)}`;
   // Recipe functions
   const openNewRecipe = () => {
     setEditingRecipe(null);
-    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: appDefaults.defaultRecipeFoLoad || 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
+    setRecipeForm({ name: '', vibe: '', style: '', description: '', container: '', wax: '', wick: '', size: 4, foLoad: appDefaults.defaultRecipeFoLoad || 10, archived: false, components: [{ fragrance: '', type: 'FO', percent: 100 }], dyes: [], shopifyLinks: [] });
     setRecipeModalPos({ x: null, y: null }); // Reset to centered
     setRecipeModalSize({ width: 700, height: null }); // Reset size
     setShowRecipeModal(true);
@@ -2343,7 +2354,7 @@ ${cleanedContent.substring(0, 12000)}`;
   const copyRecipe = (recipe, e) => {
     if (e) e.stopPropagation();
     setEditingRecipe(null);
-    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components], dyes: [...(recipe.dyes || [])], shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null });
+    setRecipeForm({ ...recipe, name: recipe.name + " (Copy)", components: [...recipe.components], dyes: [...(recipe.dyes || [])], shopifyLinks: [] });
     setShowRecipeModal(true);
   };
 
@@ -6658,7 +6669,7 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
 
                   {/* Linked Recipes Section - Inventory Sync */}
                   {(() => {
-                    const linkedRecipes = recipes.filter(r => r.shopifyVariantId);
+                    const linkedRecipes = recipes.filter(r => r.shopifyLinks?.length > 0);
                     if (linkedRecipes.length === 0 && shopifyOrders.length > 0) {
                       return (
                         <div style={{ marginTop: '32px', background: 'rgba(85,239,196,0.08)', border: '1px solid rgba(85,239,196,0.15)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
@@ -6677,11 +6688,12 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       );
                     }
                     if (linkedRecipes.length === 0) return null;
+                    const totalLinks = linkedRecipes.reduce((sum, r) => sum + (r.shopifyLinks?.length || 0), 0);
                     return (
                       <div style={{ marginTop: '32px', background: 'rgba(85,239,196,0.08)', border: '1px solid rgba(85,239,196,0.15)', borderRadius: '16px', overflow: 'hidden' }}>
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(85,239,196,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                           <h3 style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Link size={18} /> Linked Recipes ({linkedRecipes.length})
+                            <Link size={18} /> Linked Recipes ({linkedRecipes.length} recipes, {totalLinks} products)
                           </h3>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
@@ -6701,34 +6713,38 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                             <thead>
                               <tr style={{ fontSize: '12px', color: 'rgba(252,228,214,0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                 <th style={{ padding: '8px 12px', textAlign: 'left' }}>Recipe</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Shopify Product</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'center' }}>Shopify Inventory</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'left' }}>Linked Shopify Products</th>
                                 <th style={{ padding: '8px 12px', textAlign: 'center' }}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {linkedRecipes.map(recipe => {
-                                const product = shopifyProducts.find(p => String(p.id) === recipe.shopifyProductId);
-                                const variant = product?.variants?.find(v => String(v.id) === recipe.shopifyVariantId);
-                                return (
+                              {linkedRecipes.map(recipe => (
                                   <tr key={recipe.id} style={{ borderTop: '1px solid rgba(85,239,196,0.1)' }}>
-                                    <td style={{ padding: '12px' }}>
+                                    <td style={{ padding: '12px', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{recipe.name}</div>
                                       <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{recipe.vibe}</div>
                                     </td>
                                     <td style={{ padding: '12px' }}>
-                                      <div style={{ fontSize: '13px' }}>{product?.title || 'Product not found'}</div>
-                                      {variant && variant.title !== 'Default Title' && (
-                                        <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>{variant.title}</div>
-                                      )}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {(recipe.shopifyLinks || []).map((link, idx) => {
+                                          const product = shopifyProducts.find(p => String(p.id) === link.productId);
+                                          const variant = product?.variants?.find(v => String(v.id) === link.variantId);
+                                          return (
+                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                                              <CheckCircle size={12} style={{ color: '#55efc4', flexShrink: 0 }} />
+                                              <span>{link.productTitle || product?.title || 'Unknown'}</span>
+                                              <span style={{ color: '#55efc4', fontWeight: 600, marginLeft: 'auto' }}>
+                                                {variant?.inventory_quantity ?? 'N/A'}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     </td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                                      <span style={{ fontWeight: 600, color: '#55efc4' }}>{variant?.inventory_quantity ?? 'N/A'}</span>
-                                    </td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                    <td style={{ padding: '12px', textAlign: 'center', verticalAlign: 'top' }}>
                                       <button
                                         onClick={async () => {
-                                          const qty = prompt('Set Shopify inventory quantity:', variant?.inventory_quantity ?? '0');
+                                          const qty = prompt('Set Shopify inventory quantity for ALL linked products:', '0');
                                           if (qty !== null && !isNaN(parseInt(qty))) {
                                             try {
                                               await pushInventoryToShopify(recipe, parseInt(qty));
@@ -6740,14 +6756,13 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                                         }}
                                         disabled={!shopifyLocations.length}
                                         style={{ padding: '6px 12px', background: 'rgba(116,185,255,0.2)', border: '1px solid rgba(116,185,255,0.3)', borderRadius: '6px', color: '#74b9ff', cursor: shopifyLocations.length ? 'pointer' : 'not-allowed', fontSize: '12px', opacity: shopifyLocations.length ? 1 : 0.5 }}
-                                        title={shopifyLocations.length ? 'Push inventory to Shopify' : 'Load Shopify data first'}
+                                        title={shopifyLocations.length ? 'Push inventory to all linked Shopify products' : 'Load Shopify data first'}
                                       >
                                         Push to Shopify
                                       </button>
                                     </td>
                                   </tr>
-                                );
-                              })}
+                              ))}
                             </tbody>
                           </table>
                         </div>
@@ -7612,22 +7627,53 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                   </button>
                 </div>
 
-                {/* Shopify Integration Section */}
+                {/* Shopify Integration Section - Multiple Links */}
                 <div style={{ marginTop: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4' }}>Shopify Product Link</label>
-                    {recipeForm.shopifyVariantId && (
-                      <button
-                        onClick={() => setRecipeForm({ ...recipeForm, shopifyVariantId: null, shopifyProductId: null, shopifyInventoryItemId: null })}
-                        style={{ fontSize: '12px', color: '#ff6b6b', background: 'none', border: 'none', cursor: 'pointer' }}
-                      >
-                        Unlink
-                      </button>
-                    )}
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#55efc4' }}>Shopify Product Links</label>
+                    <span style={{ fontSize: '11px', color: 'rgba(252,228,214,0.5)' }}>
+                      {(recipeForm.shopifyLinks || []).length} linked
+                    </span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'rgba(252,228,214,0.5)', marginBottom: '12px' }}>
-                    Link this recipe to a Shopify product to sync inventory and track sales.
+                    Link this recipe to multiple Shopify products (different sizes/containers).
                   </div>
+
+                  {/* List of current links */}
+                  {(recipeForm.shopifyLinks || []).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                      {(recipeForm.shopifyLinks || []).map((link, idx) => {
+                        const product = shopifyProducts.find(p => String(p.id) === link.productId);
+                        const variant = product?.variants?.find(v => String(v.id) === link.variantId);
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '8px' }}>
+                            <CheckCircle size={14} style={{ color: '#55efc4', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', color: '#fce4d6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {link.productTitle || product?.title || 'Unknown Product'}
+                              </div>
+                              {variant && (
+                                <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.6)' }}>
+                                  Stock: {variant.inventory_quantity ?? 'N/A'} | ${variant.price}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setRecipeForm({
+                                ...recipeForm,
+                                shopifyLinks: (recipeForm.shopifyLinks || []).filter((_, i) => i !== idx)
+                              })}
+                              style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: '4px' }}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Add new link */}
                   {shopifyProducts.length === 0 ? (
                     <div style={{ padding: '16px', background: 'rgba(85,239,196,0.1)', border: '1px dashed rgba(85,239,196,0.3)', borderRadius: '8px', textAlign: 'center' }}>
                       <div style={{ fontSize: '13px', color: 'rgba(252,228,214,0.6)', marginBottom: '8px' }}>No Shopify products loaded</div>
@@ -7640,73 +7686,75 @@ Keep it concise and actionable. Use bullet points. Focus on the numbers.` }]
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <select
-                        value={recipeForm.shopifyProductId || ''}
+                        value=""
                         onChange={e => {
-                          const product = shopifyProducts.find(p => String(p.id) === e.target.value);
-                          if (product) {
-                            // Auto-select first variant if only one exists
-                            const defaultVariant = product.variants?.length === 1 ? product.variants[0] : null;
-                            setRecipeForm({
-                              ...recipeForm,
-                              shopifyProductId: String(product.id),
-                              shopifyVariantId: defaultVariant ? String(defaultVariant.id) : null,
-                              shopifyInventoryItemId: defaultVariant ? String(defaultVariant.inventory_item_id) : null
-                            });
+                          const val = e.target.value;
+                          if (!val) return;
+
+                          // Handle productId:variantId format for multi-variant products
+                          if (val.includes(':')) {
+                            const [productId, variantId] = val.split(':');
+                            const product = shopifyProducts.find(p => String(p.id) === productId);
+                            const variant = product?.variants?.find(v => String(v.id) === variantId);
+                            if (product && variant) {
+                              const alreadyLinked = (recipeForm.shopifyLinks || []).some(l => l.variantId === variantId);
+                              if (!alreadyLinked) {
+                                setRecipeForm({
+                                  ...recipeForm,
+                                  shopifyLinks: [...(recipeForm.shopifyLinks || []), {
+                                    productId: productId,
+                                    variantId: variantId,
+                                    inventoryItemId: String(variant.inventory_item_id),
+                                    productTitle: `${product.title}${variant.title !== 'Default Title' ? ` - ${variant.title}` : ''}`
+                                  }]
+                                });
+                              }
+                            }
                           } else {
-                            setRecipeForm({ ...recipeForm, shopifyProductId: null, shopifyVariantId: null, shopifyInventoryItemId: null });
+                            // Single-variant product
+                            const product = shopifyProducts.find(p => String(p.id) === val);
+                            if (product && product.variants?.length === 1) {
+                              const variant = product.variants[0];
+                              const alreadyLinked = (recipeForm.shopifyLinks || []).some(l => l.variantId === String(variant.id));
+                              if (!alreadyLinked) {
+                                setRecipeForm({
+                                  ...recipeForm,
+                                  shopifyLinks: [...(recipeForm.shopifyLinks || []), {
+                                    productId: String(product.id),
+                                    variantId: String(variant.id),
+                                    inventoryItemId: String(variant.inventory_item_id),
+                                    productTitle: product.title
+                                  }]
+                                });
+                              }
+                            }
                           }
                         }}
                         style={inputStyle}
                       >
-                        <option value="">Select Shopify product...</option>
-                        {shopifyProducts.map(product => (
-                          <option key={product.id} value={product.id}>{product.title}</option>
-                        ))}
+                        <option value="">+ Add Shopify product...</option>
+                        {shopifyProducts
+                          .filter(p => p.variants?.length === 1)
+                          .filter(p => !(recipeForm.shopifyLinks || []).some(l => l.productId === String(p.id)))
+                          .map(product => (
+                            <option key={product.id} value={product.id}>{product.title}</option>
+                          ))}
+                        {shopifyProducts
+                          .filter(p => p.variants?.length > 1)
+                          .map(product => (
+                            <optgroup key={product.id} label={product.title}>
+                              {product.variants
+                                .filter(v => !(recipeForm.shopifyLinks || []).some(l => l.variantId === String(v.id)))
+                                .map(variant => (
+                                  <option key={variant.id} value={`${product.id}:${variant.id}`}>
+                                    {variant.title} - ${variant.price}
+                                  </option>
+                                ))}
+                            </optgroup>
+                          ))}
                       </select>
-                      {recipeForm.shopifyProductId && (() => {
-                        const product = shopifyProducts.find(p => String(p.id) === recipeForm.shopifyProductId);
-                        if (!product || !product.variants || product.variants.length <= 1) return null;
-                        return (
-                          <select
-                            value={recipeForm.shopifyVariantId || ''}
-                            onChange={e => {
-                              const variant = product.variants.find(v => String(v.id) === e.target.value);
-                              setRecipeForm({
-                                ...recipeForm,
-                                shopifyVariantId: variant ? String(variant.id) : null,
-                                shopifyInventoryItemId: variant ? String(variant.inventory_item_id) : null
-                              });
-                            }}
-                            style={inputStyle}
-                          >
-                            <option value="">Select variant...</option>
-                            {product.variants.map(variant => (
-                              <option key={variant.id} value={variant.id}>
-                                {variant.title !== 'Default Title' ? variant.title : product.title} - ${variant.price}
-                              </option>
-                            ))}
-                          </select>
-                        );
-                      })()}
-                      {recipeForm.shopifyVariantId && (
-                        <div style={{ padding: '12px', background: 'rgba(85,239,196,0.1)', border: '1px solid rgba(85,239,196,0.2)', borderRadius: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#55efc4', fontSize: '13px' }}>
-                            <CheckCircle size={16} />
-                            <span>Linked to Shopify</span>
-                          </div>
-                          {(() => {
-                            const product = shopifyProducts.find(p => String(p.id) === recipeForm.shopifyProductId);
-                            const variant = product?.variants?.find(v => String(v.id) === recipeForm.shopifyVariantId);
-                            return variant && (
-                              <div style={{ fontSize: '11px', color: 'rgba(252,228,214,0.6)', marginTop: '4px' }}>
-                                Inventory: {variant.inventory_quantity ?? 'N/A'} | Price: ${variant.price}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
