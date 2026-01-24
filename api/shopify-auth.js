@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const SHOPIFY_STORE = 'light-by-dawn-candle-company';
   const CLIENT_ID = 'da0170242d780316fc79eb412c155282';
   const CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
-  const SCOPES = 'read_products,read_orders,read_inventory,write_inventory';
+  const SCOPES = 'read_products,read_orders,read_inventory,write_inventory,read_locations';
 
   // Get the host for redirect URI
   const host = req.headers.host;
